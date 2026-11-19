@@ -9,7 +9,7 @@ Sidebar filters (work on every page): province, survey (province + year), area, 
 
 ## Run it (Windows, Python 3.13 virtual environment)
 
-    cd dashboard
+    cd your Folder path
     python -m venv .venv
     .venv\Scripts\activate
     pip install -r requirements.txt
