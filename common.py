@@ -715,7 +715,7 @@ def weighted_hist(df, col, title, bins, xlabel, by="Province", height=400, key=N
 
 # ----------------------------------------------------------------------------- map
 COORDS = {"Punjab": (31.2, 72.6), "Sindh": (26.0, 68.7), "Khyber Pakhtunkhwa": (34.3, 72.0), "Balochistan": (28.4, 65.4),
-          "Gilgit-Baltistan": (35.5, 74.9)}
+          "Gilgit-Baltistan": (36.2, 74.6)}
 
 
 @st.cache_resource
