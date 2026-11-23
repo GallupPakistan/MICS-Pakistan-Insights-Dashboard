@@ -27,11 +27,9 @@ TILES = [
 
 
 def _pooled(k):
-    """value over all selected surveys, weighted by the number of records of each survey"""
-    r = C.ind_rate(k, "Survey")
-    if r is None or r.empty or r["n"].sum() == 0:
-        return None
-    return float((r["value"] * r["n"]).sum() / r["n"].sum())
+    """latest survey of each selected province, population-weighted (same value as the KPI cards)"""
+    v = C.overall(k)[0]
+    return None if v != v else float(v)
 
 
 def _hex(cx, cy, r):
@@ -85,7 +83,8 @@ def render():
         "</div><div>" + honeycomb(vals) + "</div></div>"
     )
     st.markdown(hero, unsafe_allow_html=True)
-    st.caption("Hexagons show each indicator pooled over the surveys selected in the sidebar (all 10 by default), weighted by the number of records. "
+    st.caption("Hexagons show the latest survey of each province (Punjab 2017, Sindh 2018, KP 2019, Balochistan 2019, GB 2016), weighted by province population, "
+               "i.e. a Pakistan estimate for about 2017-2019. Use the sidebar to change provinces or pick other survey years. "
                "Vaccination counts any dose, so it is higher than official full-course coverage.")
 
     n = {}

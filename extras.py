@@ -1,5 +1,6 @@
 """Extra, distinct chart types that every page can add as a 'Deep dive' section.
 Each kind answers a different question, so no two charts repeat the same insight."""
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -33,10 +34,21 @@ def scorecard(keys, p, height=None):
     d["Survey"] = d["Survey"].astype(str)
     pv = d.pivot_table(index="Indicator", columns="Survey", values="value")
     pv = pv[[s for s in C.survey_order(list(pv.columns))]]
-    best, worst = pv.stack().idxmax(), pv.stack().idxmin()
+    pol = d.drop_duplicates("Indicator").set_index("Indicator")["_key"].map(lambda k: C.IND[k][3]).reindex(pv.index)
+    # colour = how good the value is WITHIN its row (green = best survey, red = worst); lower-is-better rows are flipped
+    lo, hi = pv.min(axis=1), pv.max(axis=1)
+    sc = pv.sub(lo, axis=0).div((hi - lo).replace(0, np.nan), axis=0)
+    flip = np.broadcast_to((pol.values < 0)[:, None], sc.shape)
+    sc = pd.DataFrame(np.where(flip, 1 - sc.values, sc.values), index=sc.index, columns=sc.columns).fillna(0.5)
+    sc[(pol.values == 0)] = 0.5                       # context indicators (no better / worse direction) stay neutral
+    sc = sc.where(pv.notna())
+    lab = {i: (i + " (lower = better)" if pol[i] < 0 else i + " (context)" if pol[i] == 0 else i) for i in pv.index}
+    pv.index = [lab[i] for i in pv.index]
     pv.columns = [str(c) for c in pv.columns]
-    C.heatmap(pv, "Scorecard: every indicator in every survey", "%", height=height or max(420, 150 + 44 * len(pv)), key=p + "_sc", colorscale="Blues", digits=0)
-    st.caption(f"Insight: highest cell is {best[0]} in {best[1]} ({pv.stack().max():.0f}%); lowest is {worst[0]} in {worst[1]} ({pv.stack().min():.0f}%).")
+    C.heatmap(pv, "Scorecard: every indicator in every survey", "%", height=height or max(420, 150 + 44 * len(pv)), key=p + "_sc",
+              colorscale="RdYlGn", digits=0, zcolor=sc.values, cbar_title="within the row")
+    st.caption("Colours compare surveys within each row: green = best value of that indicator, red = worst (for 'lower = better' rows such as stunting, "
+               "the lowest value is green). Compare change over time only within one province.")
 
 
 def _gap(keys, dim, hi, lo, title, p):
@@ -98,7 +110,7 @@ def gradient(keys, p):
 
 
 def province_bars(keys, p):
-    C.multi_bar(keys, "Province", "Province comparison (all selected surveys pooled)", height=450, key=p + "_pv", labels={k: _short(k, 24) for k in keys})
+    C.multi_bar(keys, "Province", "Province comparison (latest survey of each province)", height=450, key=p + "_pv", labels={k: _short(k, 24) for k in keys})
 
 
 def sex_bars(keys, p):
@@ -207,8 +219,6 @@ def deep_dive(prefix, keys, kinds, tables=None, title="Deep dive"):
     st.markdown("---")
     st.markdown(f"##### {title}")
     kinds = list(kinds) + (["sample"] if tables else [])
-    if len(kinds) < 10 and len(kinds) % 2 and "drill" not in kinds:
-        kinds.append("drill")
     wide = [k for k in kinds if k == "scorecard"]            # the heatmap needs the full page width
     kinds = wide + [k for k in kinds if k != "scorecard"]
     for kd in wide:

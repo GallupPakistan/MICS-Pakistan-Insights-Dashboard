@@ -157,8 +157,16 @@ def cat_order(dim, values):
         return [e for e in EDU if e in values]
     if dim == "Sex":
         return [s for s in ("Male", "Female") if s in values]
+    if dim in FIXED_ORDER:
+        known = [v for v in FIXED_ORDER[dim] if v in values]
+        return known + sorted(v for v in values if v not in known)
+    if dim == "AgeGroup":
+        return sorted(values, key=lambda v: float(str(v).replace("+", "-").split("-")[0].split()[0]) if str(v)[:1].isdigit() else 999)
     return sorted(values)
 
+
+FIXED_ORDER = {"BirthInterval": ["First birth", "<2 years", "2 years", "3 years", "4+ years"],
+               "MotherAgeAtBirth": ["<20", "20-34", "35+"], "BirthOrder": ["1", "2-3", "4-6", "7+"]}
 
 DIM_LABEL = {"Province": "Province", "Survey": "Survey (province + year)", "Area": "Area (urban / rural)", "Wealth": "Wealth quintile",
              "Sex": "Sex", "Education": "Education", "MotherEdu": "Mother's education", "head_edu": "Head's education",
@@ -186,7 +194,7 @@ def get_filters() -> dict:
         compare=ss.get(FKEY + "cmp", "Province"),
         min_n=ss.get(FKEY + "minn", 50),
         show_ci=ss.get(FKEY + "ci", False),
-        pop=ss.get(FKEY + "pop", False),
+        pop=ss.get(FKEY + "pop", True),
     )
 
 
@@ -197,13 +205,14 @@ def all_surveys():
 
 @st.cache_data(show_spinner=False)
 def _pop_factor(table, provinces, surveys):
-    """weight multiplier per province so that its (selected) survey weights add up to the province population"""
+    """weight multiplier per SURVEY so that the weights of each survey add up to its province population
+    (each survey then stands for its whole province; combined with the latest-survey rule this gives a Pakistan estimate)"""
     df = load(table)
     if df is None:
         return {}
     d = df[df["Province"].isin(provinces) & df["Survey"].isin(surveys)]
-    tot = d.groupby("Province", observed=True)["w"].sum()
-    return {p: POP[p] / t for p, t in tot.items() if p in POP and t > 0}
+    tot = d.groupby("Survey", observed=True)["w"].sum()
+    return {s: POP[survey_province(str(s))] / t for s, t in tot.items() if survey_province(str(s)) in POP and t > 0}
 
 
 def apply(df, table=None, sex=True):
@@ -216,7 +225,7 @@ def apply(df, table=None, sex=True):
         surveys = F["surveys"] or all_surveys()
         fac = _pop_factor(table, tuple(F["provinces"]), tuple(surveys))
         if fac:
-            out = out.assign(w=out["w"].to_numpy() * out["Province"].astype(str).map(fac).fillna(0).to_numpy())
+            out = out.assign(w=out["w"].to_numpy() * out["Survey"].astype(str).map(fac).fillna(0).to_numpy())
     return out
 
 
@@ -235,6 +244,19 @@ def _apply(df, F, sex=True):
     return df[m]
 
 
+def latest_only(d, by=()):
+    """A figure that is NOT split by survey would otherwise mix survey rounds (e.g. Punjab 2011 + 2014 + 2017).
+    Unless the user picked surveys in the sidebar, keep only the most recent survey of each province that has data."""
+    by = [by] if isinstance(by, str) else list(by)
+    if d is None or d.empty or "Survey" in by or "Survey" not in d.columns or get_filters()["surveys"]:
+        return d
+    sv = d["Survey"].astype(str)
+    yr = sv.str.rsplit(" ", n=1).str[1].astype(int)
+    prov = sv.str.rsplit(" ", n=1).str[0]
+    last = yr.groupby(prov).transform("max")
+    return d[(yr == last).to_numpy()]
+
+
 def compare_dim(df, allowed=("Province", "Survey", "Area", "Wealth", "Sex")):
     c = get_filters()["compare"]
     return c if (c in allowed and c in df.columns) else "Province"
@@ -247,7 +269,7 @@ def rate(df, col, by, scale=100.0, where=None, min_n=None):
     if df is None or col not in df.columns:
         return pd.DataFrame(columns=by + ["value", "n", "neff", "lo", "hi"])
     d = df if where is None else df[where(df)]
-    d = d[d[col].notna()]
+    d = latest_only(d[d[col].notna()], by)
     if d.empty:
         return pd.DataFrame(columns=by + ["value", "n", "neff", "lo", "hi"])
     d = d.assign(_v=d[col].astype(float) * d["w"], _w2=d["w"] ** 2)
@@ -267,7 +289,7 @@ def rate(df, col, by, scale=100.0, where=None, min_n=None):
 def wmean(df, col, by, where=None):
     by = [by] if isinstance(by, str) else list(by)
     d = df if where is None else df[where(df)]
-    d = d[d[col].notna()]
+    d = latest_only(d[d[col].notna()], by)
     if d.empty:
         return pd.DataFrame(columns=by + ["value", "n"])
     d = d.assign(_v=d[col].astype(float) * d["w"])
@@ -279,7 +301,7 @@ def wmean(df, col, by, where=None):
 def dist(df, cat, by, order=None):
     """weighted % distribution of a categorical column inside each group"""
     by = [by] if isinstance(by, str) else list(by)
-    d = df[df[cat].notna()]
+    d = latest_only(df[df[cat].notna()], by)
     if d.empty:
         return pd.DataFrame(columns=by + [cat, "pct", "n"])
     g = d.groupby(by + [cat], observed=True).agg(sw=("w", "sum"), n=("w", "size")).reset_index()
@@ -310,9 +332,9 @@ def births5_9(d):
 
 
 IND = {
-    "Improved drinking water": ("hh", "water_improved", "%", +1, None, "Households whose main drinking-water source is piped, tube well / pump, protected well or spring, bottled / filtered or rain water."),
+    "Improved drinking water": ("hh", "water_improved", "%", +1, None, "Households whose main drinking-water source is improved (JMP 2017 / MICS6): piped, tube well / pump, protected well or spring, bottled / filtered, rain water, tanker-truck or cart with small tank."),
     "Piped water": ("hh", "water_piped", "%", +1, None, "Households with piped water (into dwelling, yard, neighbour or public tap)."),
-    "Improved sanitation": ("hh", "sanitation_improved", "%", +1, None, "Households using a flush toilet to sewer / septic tank / pit, or a pit latrine with slab / VIP / composting toilet (sharing is not considered)."),
+    "Improved sanitation": ("hh", "sanitation_improved", "%", +1, None, "Households using a flush toilet to sewer / septic tank / pit / unknown place, or a pit latrine with slab / VIP / composting toilet (JMP definition; sharing is not considered)."),
     "Open defecation": ("hh", "open_defecation", "%", -1, None, "Households with no toilet facility (bush / field)."),
     "Handwashing water available": ("hh", "handwash_water", "%", +1, None, "Households where water is available at the place for handwashing (among households observed)."),
     "Electricity": ("hh", "electricity", "%", +1, None, "Households with electricity (grid or off-grid)."),
@@ -344,20 +366,20 @@ IND = {
     "Under-5 deaths per 1,000 births (births 5-9 years ago)": ("births", "died_u5", "per 1,000", -1, births5_9, "Births 5-9 years before the survey that died before age 5 (full exposure, crude)."),
     "Siblings who died": ("siblings", "dead", "%", -1, None, "Siblings listed by women 15-49 who have died."),
     "Children 5-17 ever attended school": ("c5to17", "ever_school", "%", +1, None, "Children 5-17 who ever attended school or an early childhood programme."),
-    "Children 5-17 attending school now": ("c5to17", "attending", "%", +1, None, "Children 5-17 attending school in the current school year (among those with an answer)."),
+    "Children 5-17 attending school now": ("c5to17", "attending", "%", +1, None, "Children 5-17 attending school or an early childhood programme in the current school year, out of all children 5-17 (children who never attended count as not attending)."),
     "Children 5-17 doing paid / income work": ("c5to17", "works_income", "%", -1, None, "Children 5-17 who did an activity for income in the past week."),
     "Children 5-17 doing household chores": ("c5to17", "chores", "%", 0, None, "Children 5-17 who did at least one household chore in the past week."),
     "Children 5-17 with functional difficulty": ("c5to17", "func_difficulty", "%", -1, None, "Children 5-17 with 'a lot of difficulty' or 'cannot do' in at least one domain."),
     "Television": ("hh", "has_tv", "%", +1, None, "Households that own a television."),
-    "Refrigerator": ("hh", "has_fridge", "%", +1, None, "Households that own a refrigerator / freezer (not asked in Punjab 2011)."),
+    "Refrigerator": ("hh", "has_fridge", "%", +1, None, "Households that own a refrigerator / freezer."),
     "Mobile phone in household": ("hh", "has_mobile", "%", +1, None, "Households where at least one member owns a mobile phone (not asked in Punjab 2011)."),
-    "Motorcycle / scooter": ("hh", "has_motorbike", "%", +1, None, "Households that own a motorcycle or scooter (not asked in Sindh 2014)."),
+    "Motorcycle / scooter": ("hh", "has_motorbike", "%", +1, None, "Households that own a motorcycle or scooter."),
     "Bank account in household": ("hh", "has_bank", "%", +1, None, "Households where at least one member has an account in a bank, post office or national savings centre (not asked in Balochistan 2010, Punjab 2011)."),
     "Rented dwelling": ("hh", "rents_home", "%", 0, None, "Households that rent their dwelling (the others own it or live in it free of rent)."),
     "Diarrhoea in last 2 weeks": ("children", "diarrhoea", "%", -1, None, "Children under 5 who had diarrhoea in the two weeks before the interview."),
     "Fever in last 2 weeks": ("children", "fever", "%", -1, None, "Children under 5 who had a fever in the two weeks before the interview (not asked in Punjab 2011)."),
     "ORS given (children with diarrhoea)": ("children", "ors", "%", +1, None, "Among children with diarrhoea in the last 2 weeks, the share who drank oral rehydration salts (ORS packet or fluid)."),
-    "Vitamin A in last 6 months": ("children", "vitamin_a", "%", +1, None, "Children under 5 who received a vitamin A dose in the last 6 months (not asked in Balochistan 2010, Punjab 2011, Sindh 2014)."),
+    "Vitamin A in last 6 months": ("children", "vitamin_a", "%", +1, None, "Children under 5 who received a vitamin A dose in the last 6 months (not asked in Balochistan 2010; Sindh 2014 asked about the last 12 months, so it is left out)."),
     "Nets slept under last night": ("nets", "slept", "%", +1, None, "Nets that someone slept under the night before the survey (among nets listed in the household; Balochistan and Sindh only)."),
     "Mosquito nets observed": ("nets", "observed", "%", +1, None, "Nets seen by the interviewer (among nets listed in the household)."),
 }
@@ -428,7 +450,8 @@ def page_header(title, subtitle, icon="", badge=None):
         f"Area: {', '.join(F['areas'])} "
         f"&nbsp;|&nbsp; Wealth: {'all quintiles' if len(F['wealth']) == 5 else ', '.join(F['wealth'])} "
         f"&nbsp;|&nbsp; Districts: {len(F['districts']) or 'all'} &nbsp;|&nbsp; Compare by: <b>{DIM_LABEL.get(F['compare'], F['compare'])}</b> "
-        f"&nbsp;|&nbsp; Weights: <b>{'population-weighted Pakistan' if F['pop'] else 'survey sample weights'}</b></div>",
+        f"&nbsp;|&nbsp; Weights: <b>{'population-weighted Pakistan' if F['pop'] else 'survey sample weights'}</b>"
+        f"&nbsp;|&nbsp; Snapshots: <b>{'surveys you picked' if F['surveys'] else 'latest survey of each province'}</b></div>",
         unsafe_allow_html=True)
     (st.iframe if hasattr(st, 'iframe') else __import__('streamlit.components.v1', fromlist=['html']).html)("<button onclick=\"window.parent.print()\" style='float:right;padding:6px 14px;border:1px solid #0B5FA5;background:#fff;color:#0B5FA5;"
              "border-radius:8px;font-weight:600;cursor:pointer'>⬇ Save this page as PDF</button>", **({'height': 50} if hasattr(st, 'iframe') else {'height': 50}))
@@ -476,7 +499,7 @@ def overall(key):
     if df is None or df.empty:
         return np.nan, None, 0, unit, pol, desc
     d = df if where is None else df[where(df)]
-    d = d[d[col].notna()]
+    d = latest_only(d[d[col].notna()])
     if d.empty:
         return np.nan, None, 0, unit, pol, desc
     val = (d[col].astype(float) * d["w"]).sum() / d["w"].sum() * ind_scale(unit)
@@ -651,7 +674,11 @@ def trend_chart(rt, title, unit="%", height=500, ytitle=None, key=None, color="P
         tr.text = ["" if (ti, pi) in hide else t_ for pi, t_ in enumerate(tr.text)]
     yrs = sorted(d["Year"].unique())
     fig.update_xaxes(tickmode="array", tickvals=yrs, ticktext=[str(y) for y in yrs], range=[min(yrs) - 0.8, max(yrs) + 0.8])
-    fig.update_yaxes(range=[0, max(d["value"].max(), 1) * 1.22])
+    ytop = max(d["value"].max(), 1) * 1.22
+    if unit == "%":                                   # a percentage axis should not run far past 100
+        ytop = min(ytop, 112)
+        fig.update_yaxes(tickvals=[0, 20, 40, 60, 80, 100])
+    fig.update_yaxes(range=[0, ytop])
     style(fig, height, legend_title="Province")
     show(fig, key=key)
 
@@ -677,15 +704,19 @@ def dist_chart(dd, cat, by, title, cmap=None, order=None, height=430, key=None, 
     show(fig, key=key)
 
 
-def heatmap(pivot, title, unit="%", height=460, key=None, colorscale="RdYlGn", reverse=False, xlabel="", ylabel="", digits=1):
+def heatmap(pivot, title, unit="%", height=460, key=None, colorscale="RdYlGn", reverse=False, xlabel="", ylabel="", digits=1, zcolor=None, cbar_title=None):
+    """zcolor (optional, same shape as pivot) sets the cell colour while the text still shows the real values"""
     if pivot is None or pivot.empty:
         no_data()
         return
     z = pivot.values.astype(float)
     text = np.where(np.isnan(z), "not asked", np.vectorize(lambda v: fmt(v, unit, digits) if not np.isnan(v) else "")(z))
-    fig = go.Figure(go.Heatmap(z=z, x=list(pivot.columns), y=list(pivot.index), text=text, texttemplate="%{text}", textfont=dict(size=12),
-                               colorscale=colorscale, reversescale=reverse, xgap=2, ygap=2,
-                               colorbar=dict(title=dict(text=unit_axis(unit), side="right"), thickness=14),
+    cz = z if zcolor is None else np.asarray(zcolor, dtype=float)
+    cbar = dict(title=dict(text=cbar_title or unit_axis(unit), side="right"), thickness=14)
+    if zcolor is not None:
+        cbar.update(tickvals=[0, 1], ticktext=["worse", "better"])
+    fig = go.Figure(go.Heatmap(z=cz, x=list(pivot.columns), y=list(pivot.index), text=text, texttemplate="%{text}", textfont=dict(size=12),
+                               colorscale=colorscale, reversescale=reverse, xgap=2, ygap=2, colorbar=cbar,
                                hovertemplate="%{y}<br>%{x}: %{text}<extra></extra>"))
     fig.update_layout(title=title, xaxis_title=xlabel, yaxis_title=ylabel, yaxis=dict(autorange="reversed"))
     style(fig, height, legend=False, bottom=90)
@@ -838,7 +869,9 @@ def line_chart(rt, x, color, title, unit="%", height=420, key=None, xorder=None,
     d[color] = d[color].astype(str)
     d["label"] = d["value"].map(lambda v: fmt(v, unit, 0))
     xo = xorder or cat_order(x, d[x])
-    fig = px.line(d.sort_values(x), x=x, y="value", color=color, markers=True, color_discrete_map=color_map(color, d[color]),
+    d["_xo"] = d[x].map({v: i for i, v in enumerate(xo)}).fillna(len(xo))
+    d = d.sort_values([color, "_xo"])                 # lines must join points in the category order, not alphabetically
+    fig = px.line(d, x=x, y="value", color=color, markers=True, color_discrete_map=color_map(color, d[color]),
                   category_orders={x: xo, color: cat_order(color, d[color])}, title=title,
                   labels={"value": ytitle or unit_axis(unit), x: DIM_LABEL.get(x, x), color: DIM_LABEL.get(color, color)},
                   hover_data={"n": ":,", "label": False})
@@ -860,7 +893,8 @@ def gap_chart(rt_a, rt_b, name_a, name_b, title, unit="%", polarity=0, key=None,
     m["gap"] = m["value_b"] - m["value_a"]
     fav = m["gap"] * (polarity if polarity else 1)
     m["Direction"] = np.where(polarity == 0, "Difference", np.where(fav >= 0, "Favours " + name_b, "Favours " + name_a))
-    cmap = {"Difference": NEUTRAL, f"Favours {name_b}": GOOD if polarity else NEUTRAL, f"Favours {name_a}": BAD if polarity else NEUTRAL}
+    # a gap is an inequality, so it is never painted "good" green: one colour per direction, the bar length shows the size
+    cmap = {"Difference": NEUTRAL, f"Favours {name_b}": "#0B5FA5", f"Favours {name_a}": "#E8A317"}
     gu = "percentage points" if unit == "%" else ("deaths per 1,000 births" if unit == "per 1,000" else unit)
     gs = "pp" if unit == "%" else ("per 1,000" if unit == "per 1,000" else unit)
     m["label"] = m["gap"].map(lambda v: f"{v:+.1f}")

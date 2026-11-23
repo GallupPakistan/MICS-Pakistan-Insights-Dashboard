@@ -98,7 +98,6 @@ def render():
             with a:
                 if "Sex" in c5.columns:
                     C.bar_chart(C.ind_rate(ind, ["Survey", "Sex"]), "Survey", f"{ind}: boys vs girls", "%", color="Sex", key="e8")
-                    st.caption("Sex is not recorded in Sindh 2018 for this table.")
             with b:
                 C.bar_chart(C.ind_rate(ind, ["Wealth", "Province"]), "Wealth", f"{ind} by wealth quintile", "%", color="Province", key="e9")
             a, b = st.columns(2)
@@ -107,7 +106,7 @@ def render():
                 C.bar_chart(r, "MotherEdu", "Attending school by mother's education", "%", color="Province", key="e10")
             with b:
                 C.bar_chart(C.ind_rate("Children 5-17 doing household chores", ["Survey", "Area"]), "Survey", "Doing household chores: urban vs rural", "%", color="Area", key="e11")
-            st.caption("School attendance is reported for children with an answer on the current school year (the share answered varies by survey).")
+            st.caption("School attendance = attending in the current school year, out of all children 5-17 (children who never went to school count as not attending).")
 
     with tabs[2]:
         mem = C.apply(C.load("members"), "members")

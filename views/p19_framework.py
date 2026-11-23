@@ -1,5 +1,5 @@
 """Concept-map style infographics built from the live data: a hub-and-spoke of what drives service use,
-a diagram of how the survey tables link together, and a 3-step guide to the dashboard."""
+(the technical table diagram and the how-to cards were removed: the Home page and Data notes already cover them)."""
 import html
 import math
 
@@ -129,35 +129,3 @@ def render():
         C.takeaway(f"For this outcome the biggest difference is by {best['name'].lower()}: {best['hi_l']} {best['hi_v']:.0f}% against {best['lo_l']} {best['lo_v']:.0f}%. "
                    f"Each circle shows the lowest and highest group among {cfg['who']} in the selected surveys (groups under 100 records are left out).")
         st.caption("These are differences between groups, not proof of cause: for example, women who attend four or more antenatal visits may also be richer or live closer to a facility.")
-
-    # ---- 2. how the tables link -------------------------------------------------------------
-    st.markdown("---")
-    st.markdown("##### 2. How the survey tables link together")
-    spec = [("hh", "Households", "one row per household"), ("members", "Household members", "age, sex, education"), ("women", "Women 15-49", "births, care, marriage"),
-            ("men", "Men 15-49", "4 surveys only"), ("children", "Children under 5", "growth, vaccines, illness"), ("c5to17", "Children 5-17", "school, work"),
-            ("nets", "Mosquito nets", "Balochistan & Sindh"), ("births", "Birth history", "child mortality"), ("siblings", "Sibling history", "adult mortality")]
-    tabs = []
-    for t, nm, note in spec:
-        try:
-            d = C.load(t)
-            tabs.append(dict(name=nm, rows=len(d), note=note, surveys=f"{d['Survey'].nunique()} surveys"))
-        except Exception:
-            pass
-    if len(tabs) >= 3:
-        st.markdown(linkage_svg(tabs), unsafe_allow_html=True)
-        st.caption("Every table carries the survey name, cluster number and household number, so any record can be traced back to its household (the match rate was 100% when the data were prepared). "
-                   "Counts are the full tables before any sidebar filter.")
-
-    # ---- 3. three steps -----------------------------------------------------------------------
-    st.markdown("---")
-    st.markdown("##### 3. Using the dashboard in three steps")
-    n_ind, n_sv = len(C.IND), len(C.all_surveys())
-    card = lambda n, t, b, c: (f"<div style='flex:1 1 260px;background:#fff;border:1px solid #DCE4EE;border-top:6px solid {c};border-radius:14px;padding:16px 18px'>"
-                               f"<div style='font-size:34px;font-weight:800;color:{c}'>{n}</div><div style='font-size:17px;font-weight:800;color:{NAVY};margin:2px 0 6px'>{t}</div>"
-                               f"<div style='font-size:14px;color:{INK};line-height:1.45'>{b}</div></div>")
-    arrow = "<div style='align-self:center;font-size:30px;color:#9AA5B1'>➜</div>"
-    st.markdown("<div style='display:flex;flex-wrap:wrap;gap:12px;align-items:stretch'>"
-                + card("01", "Choose who to look at", f"Use the sidebar to pick provinces, survey years, urban/rural, wealth quintile and districts. {n_sv} surveys from 2010 to 2019 are available; the bar at the top always shows what is selected.", "#2C7FB8")
-                + arrow + card("02", "Explore the indicators", f"{n_ind} indicators across households, water, maternal health, immunisation, nutrition, mortality, education, assets, illness and fertility. Every page mixes maps, trends, gaps and breakdowns.", "#2E9E6B")
-                + arrow + card("03", "Compare, check and share", "Use Compare two groups for significance, the KPI scorecard for change over time, the Data notes page for definitions, and the download buttons for PNG, CSV or PDF.", "#E8A317")
-                + "</div>", unsafe_allow_html=True)

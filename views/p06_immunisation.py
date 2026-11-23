@@ -3,7 +3,6 @@ import pandas as pd
 import streamlit as st
 
 import common as C
-import extras as X
 
 VAC = ["BCG: at least one dose (12-35 months)", "Polio: at least one dose (12-35 months)", "Penta / DPT: at least one dose (12-35 months)",
        "Measles: at least one dose (12-35 months)"]
@@ -85,4 +84,3 @@ def render():
         if "Sex" in k.columns:
             C.bar_chart(C.ind_rate(ind, ["Survey", "Sex"]), "Survey", f"{SHORT[ind]}, at least one dose: boys vs girls", "%", color="Sex", key="i7")
 
-    X.deep_dive("im", ["BCG: at least one dose (12-35 months)", "Polio: at least one dose (12-35 months)", "Penta / DPT: at least one dose (12-35 months)", "Measles: at least one dose (12-35 months)"], ["scorecard", "province"])

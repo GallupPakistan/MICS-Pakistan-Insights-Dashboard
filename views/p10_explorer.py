@@ -83,10 +83,10 @@ def render():
     st.markdown("##### Data notes and limitations")
     st.markdown("""
 * **What a 'survey' is.** Each survey is one province in one year (Punjab 2011 / 2014 / 2017, Sindh 2014 / 2018, KP 2016 / 2019, Balochistan 2010 / 2019, GB 2016). There is no single national MICS in this data set,
-  so values pooled over provinces are sample-weighted combinations, not national estimates.
+  so a value over several provinces uses the latest survey of each province, weighted by province population (sidebar toggle), as an approximate Pakistan estimate.
 * **Harmonisation.** The same answer is stored in different ways across surveys (Rural / RURAL / 2.0, Male / MALE / 1.0, Completed / COMPLETED / 1.0). All of them were mapped to one value.
-  Punjab 2011 / 2014 / 2017 individual files (women, children, some others) were converted without value labels, so their numeric codes were mapped using the standard MICS coding
-  (1 = urban, 2 = rural; 1 = male, 2 = female; 1 = yes, 2 = no; education 0-4 for Punjab 2017 and 1-5 for Punjab 2011 / 2014, checked against the share of women with no schooling). Area and wealth quintile always come from the household table where the household could be matched.
+  The source CSVs carry the SPSS value labels for every survey (checked value-by-value against the original SPSS files); numeric-code rules remain only as a fallback.
+  Area and wealth quintile always come from the household table where the household could be matched.
 * **Weights.** Every percentage uses the sample weight that belongs to the table (household, woman, man, child under 5 or child 5-17). Records with weight 0 (incomplete interviews) are dropped.
 * **Confidence intervals** are approximate (they use the effective sample size and ignore clustering), so true uncertainty is larger.
 * **Questions that were not asked** in a survey simply have no bar (for example wife-beating attitudes in Punjab 2011, mosquito nets in Punjab / KP / GB, men's interviews before 2017).
@@ -100,4 +100,4 @@ def render():
     except Exception:
         pass
 
-    X.deep_dive("ex", ["Improved drinking water","Electricity","Skilled birth attendant","Four or more antenatal visits","Stunting (height-for-age < -2 SD)","Measles: at least one dose (12-35 months)","Women ever attended school","Contraceptive use","Diarrhoea in last 2 weeks","Mobile phone in household"], ["scorecard","area_gap","wealth_gap","province","trend","forest","scatter"])
+    X.deep_dive("ex", ["Improved drinking water","Electricity","Skilled birth attendant","Four or more antenatal visits","Stunting (height-for-age < -2 SD)","Measles: at least one dose (12-35 months)","Women ever attended school","Contraceptive use","Diarrhoea in last 2 weeks","Mobile phone in household"], ["scorecard","area_gap","wealth_gap","forest"])

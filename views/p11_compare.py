@@ -85,7 +85,7 @@ def render():
         else:
             cols.append(C.GOOD if r.Difference * r.Polarity > 0 else C.BAD)
     fig2 = go.Figure(go.Bar(y=d2["Indicator"], x=d2["Difference"], orientation="h", marker_color=cols, text=d2["Difference"].map(lambda v: f"{v:+.1f}"),
-                            textposition="outside", cliponaxis=False))
+                            textposition="outside", cliponaxis=False, showlegend=False))
     for name, colr in (("Group B better (significant)", C.GOOD), ("Group B worse (significant)", C.BAD), ("Difference without clear better / worse", C.NEUTRAL),
                        ("Not significant (p >= 0.05)", "#9AA5B1")):
         fig2.add_trace(go.Bar(y=[None], x=[None], marker_color=colr, name=name, orientation="h"))
@@ -115,47 +115,6 @@ def render():
         f.update_layout(title="Group A vs group B (above the line = higher in B; green = significant)", xaxis_title=f"A: {nameA} (%)", yaxis_title=f"B: {nameB} (%)")
         C.style(f, max(420, 90 + 50 * len(o)), legend=False, bottom=50)
         C.show(f, key="cmp4")
-    r2 = st.columns(2)
-    with r2[0]:  # 3 evidence strength
-        q = ok.sort_values("p", ascending=False)
-        f = go.Figure(go.Bar(y=q["Indicator"], x=-np.log10(q["p"].clip(lower=1e-12)), orientation="h", marker_color=[C.GOOD if p < 0.05 else "#9AA5B1" for p in q["p"]],
-                             hovertemplate="%{y}<br>-log10(p) = %{x:.1f}<extra></extra>"))
-        f.add_vline(x=-np.log10(0.05), line_dash="dash", line_color="#444", annotation_text="p = 0.05", annotation_position="top")
-        f.update_layout(title="Strength of evidence (longer bar = less likely to be chance)", xaxis_title="-log10(p)", yaxis_title="")
-        C.style(f, max(420, 90 + 40 * len(q)), legend=False, bottom=50)
-        C.show(f, key="cmp5")
-    with r2[1]:  # 4 relative change
-        rel = ok[ok["A"] > 0].assign(rel=lambda x: (x["B"] / x["A"] - 1) * 100).sort_values("rel")
-        f = go.Figure(go.Bar(y=rel["Indicator"], x=rel["rel"], orientation="h", marker_color=[B_COL if v > 0 else A_COL for v in rel["rel"]],
-                             text=rel["rel"].map(lambda v: f"{v:+.0f}%"), textposition="outside", cliponaxis=False))
-        f.add_vline(x=0, line_color="#444")
-        f.update_layout(title="Relative difference: B as % above or below A", xaxis_title="% relative to group A", yaxis_title="")
-        lo_, hi_ = min(0, rel["rel"].min()), max(0, rel["rel"].max())
-        pad_ = max((hi_ - lo_) * 0.40, 15)
-        f.update_xaxes(range=[lo_ - (max(pad_, (hi_ - lo_) * 0.75) if lo_ < 0 else 0), hi_ + (pad_ if hi_ > 0 else 0)])
-        C.style(f, max(420, 90 + 40 * len(rel)), legend=False, bottom=50)
-        f.update_layout(margin_r=60)
-        C.show(f, key="cmp6")
-    r3 = st.columns(2)
-    with r3[0]:  # 5 verdict counts
-        fav = ok[ok["Polarity"] != 0]
-        sig = fav[fav["p"] < 0.05]
-        cnt = {"B better": int(((sig["Difference"] * sig["Polarity"]) > 0).sum()), "B worse": int(((sig["Difference"] * sig["Polarity"]) < 0).sum()),
-               "No clear<br>difference": int((fav["p"] >= 0.05).sum()), "No better /<br>worse rule": int((ok["Polarity"] == 0).sum())}
-        f = go.Figure(go.Bar(x=list(cnt), y=list(cnt.values()), marker_color=[C.GOOD, C.BAD, "#9AA5B1", C.NEUTRAL], text=list(cnt.values()), textposition="outside"))
-        f.update_layout(title="Verdict across the compared indicators", yaxis_title="number of indicators", xaxis_title="")
-        f.update_yaxes(range=[0, max(cnt.values()) * 1.25 + 1])
-        C.style(f, 420, legend=False, bottom=80)
-        f.update_xaxes(tickangle=0)
-        C.show(f, key="cmp7")
-    with r3[1]:  # 6 sample sizes
-        f = go.Figure()
-        f.add_trace(go.Bar(y=o["Indicator"], x=o["A_n"], orientation="h", name=label("A", nameA), marker_color=A_COL))
-        f.add_trace(go.Bar(y=o["Indicator"], x=o["B_n"], orientation="h", name=label("B", nameB), marker_color=B_COL))
-        f.update_layout(barmode="group", title="Records behind each value", xaxis_title="records", yaxis_title="")
-        C.style(f, 420 if len(o) < 6 else 90 + 50 * len(o), legend_title="Group")
-        C.show(f, key="cmp8")
-
     out = t.copy()
     out = out.rename(columns={"A": f"Value {label('A', nameA)}", "B": f"Value {label('B', nameB)}", "p": "p-value", "Difference": "Difference B - A (pp)"}).drop(columns=["Polarity"])
     C.show_table(out.round(3), "two_group_comparison", "Show / download the comparison table")

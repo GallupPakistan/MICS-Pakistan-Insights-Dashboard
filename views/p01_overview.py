@@ -26,20 +26,21 @@ def render():
     _heads = ["Improved drinking water", "Improved sanitation", "Electricity", "Stunting (height-for-age < -2 SD)", "Skilled birth attendant", "Measles: at least one dose (12-35 months)"]
     _v = {}
     for _k in _heads:
-        _rr = C.ind_rate(_k, "Survey")
-        if _rr is not None and not _rr.empty and _rr["n"].sum() > 0:
-            _v[_k] = float((_rr["value"] * _rr["n"]).sum() / _rr["n"].sum())
+        _val = C.overall(_k)[0]
+        if _val == _val:
+            _v[_k] = float(_val)
     _good = {k: v for k, v in _v.items() if C.IND[k][3] > 0}
     if len(_good) >= 2:
         _hi, _lo = max(_good, key=_good.get), min(_good, key=_good.get)
         C.takeaway(f"Among the headline services, <b>{_hi.lower()}</b> reaches the most people ({_good[_hi]:.0f}%) and <b>{_lo.lower()}</b> the fewest ({_good[_lo]:.0f}%). "
                    f"{('Stunting affects ' + format(_v['Stunting (height-for-age < -2 SD)'], '.0f') + '% of children under 5. ') if 'Stunting (height-for-age < -2 SD)' in _v else ''}"
-                   f"Pooled over the selected surveys; use the filters to focus on one province.")
-    st.markdown("##### Headline indicators (pooled over the selected surveys)")
+                   f"Latest survey of each province{', population-weighted' if C.get_filters()['pop'] else ''}; use the filters to focus on one province.")
+    st.markdown("##### Headline indicators (latest survey of each province)")
     C.kpi_row(["Improved drinking water", "Improved sanitation", "Electricity"])
     C.kpi_row(["Stunting (height-for-age < -2 SD)", "Skilled birth attendant", "Measles: at least one dose (12-35 months)"])
     st.caption("Arrows show the change between the first and last survey when a single province is selected (pp = percentage points). "
-               "Green = improvement, red = deterioration. Pooled values over several provinces are sample-weighted; switch on 'Population-weighted (Pakistan)' in the sidebar for a national estimate.")
+               "Green = improvement, red = deterioration. With several provinces the value combines the latest survey of each province, weighted by province population "
+               "(2023 census), so it reads as a Pakistan estimate for about 2017-2019 (Balochistan 2019, KP 2019, Punjab 2017, Sindh 2018, GB 2016).")
 
     st.markdown("---")
     st.markdown("##### Map: where does each province stand?")
@@ -106,7 +107,8 @@ def render():
 * **Filters (left)** apply to every page: province, survey, area, sex, wealth quintile and district. *Compare charts by* chooses the colour split.
 * **Each survey is one province in one year** (e.g. *Punjab 2017*). Changes over time are only meaningful **within** a province.
 * Percentages are **weighted** with the survey sample weight of the table (household, woman, man or child weight). Groups with fewer than N records are hidden.
-* Pooled numbers over several provinces are **not national estimates** (weights are normalised inside each survey, not by province population).
+* KPIs and charts that are **not split by survey** use the **latest survey of each province**, so different survey years are never mixed. Trend and by-survey charts use every survey. Picking surveys in the sidebar overrides this.
+* Values over several provinces are **population-weighted** (2023 census) by default, so they read as a Pakistan estimate; turn the toggle off for plain sample weights.
 * The 'Compare & data explorer' page lets you build any comparison and download the numbers.""")
 
     X.deep_dive("ov", ["Improved drinking water","Improved sanitation","Electricity","Clean cooking fuel / stove","Skilled birth attendant","Stunting (height-for-age < -2 SD)","Measles: at least one dose (12-35 months)","Contraceptive use"], ["scorecard","area_gap","wealth_gap","gradient"])

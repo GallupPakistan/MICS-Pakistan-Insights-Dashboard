@@ -110,8 +110,8 @@ def bivariate():
         return C.no_data("No district has both indicators with enough records."), None
     with c[2]:
         opts = C.survey_order(list(m["Survey"].unique()))
-        biggest = m.groupby("Survey").size().idxmax()
-        sv = st.selectbox("Survey", opts, index=opts.index(biggest), key="ev_bs")
+        latest = max(opts, key=lambda x: (m["Survey"].eq(x).sum() >= 6, int(x.rsplit(" ", 1)[1]), m["Survey"].eq(x).sum()))   # most recent survey with enough districts
+        sv = st.selectbox("Survey", opts, index=opts.index(latest), key="ev_bs")
     m = m[m["Survey"] == sv].sort_values("District").reset_index(drop=True)
     if len(m) < 6:
         return C.no_data("Fewer than 6 districts in this survey have both indicators."), None

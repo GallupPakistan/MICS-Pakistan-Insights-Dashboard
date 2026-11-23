@@ -4,7 +4,6 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import common as C
-import extras as X
 
 
 def render():
@@ -23,13 +22,18 @@ def render():
             order = C.survey_order(t["Survey"])
             cm = C.survey_colors(order)
             t = t.set_index("Survey").loc[order].reset_index()
+            _lt = C.latest_only(t.assign(Survey=t["Survey"].astype(str)))       # do not average across survey years
             c1, c2, c3 = st.columns(3)
             with c1:
                 C.kpi("Surveys with an index", f"{len(t)}")
             with c2:
-                C.kpi("Average slope index", f"{t['SII'].mean():+.1f}" + (" pp" if unit == "%" else " per 1,000"), help="Slope index of inequality: absolute gap between the richest and poorest end of the wealth ranking, using all five quintiles.")
+                C.kpi("Slope index, latest surveys (avg.)", f"{_lt['SII'].mean():+.1f}" + (" pp" if unit == "%" else " per 1,000"),
+                      help="Slope index of inequality: absolute gap between the richest and poorest end of the wealth ranking, using all five quintiles. "
+                           "Averaged over the latest survey of each province (or the surveys picked in the sidebar).")
             with c3:
-                C.kpi("Average concentration index", f"{t['CI'].mean():+.3f}", help="Between -1 and +1. Positive = the outcome is concentrated among richer households, negative = among poorer ones, 0 = equal.")
+                C.kpi("Concentration index, latest surveys (avg.)", f"{_lt['CI'].mean():+.3f}",
+                      help="Between -1 and +1. Positive = the outcome is concentrated among richer households, negative = among poorer ones, 0 = equal. "
+                           "Averaged over the latest survey of each province.")
             a, b = st.columns(2)
             with a:
                 t["label"] = t["SII"].map(lambda v: f"{v:+.1f}")
@@ -99,4 +103,3 @@ def render():
                        + ("Higher is better, so the best districts are at the top." if pol > 0 else "Lower is better, so the best districts are at the bottom." if pol < 0 else ""))
             C.show_table(r.round(2), "district_ranking")
 
-    X.deep_dive("ad", ["Four or more antenatal visits", "Antenatal care by skilled provider", "Caesarean section", "Wasting (weight-for-height < -2 SD)", "Underweight (weight-for-age < -2 SD)", "Children 5-17 attending school now"], ["scorecard", "area_gap", "trend", "province", "forest"])

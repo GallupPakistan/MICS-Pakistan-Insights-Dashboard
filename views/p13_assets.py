@@ -36,6 +36,7 @@ def render():
         if rows:
             d = pd.concat(rows)
             d["Wealth"] = d["Wealth"].astype(str)
+            d = d.assign(_o=d["Wealth"].map(C.WEALTH.index)).sort_values(["Asset", "_o"])   # join points poorest -> richest
             fig = px.line(d, x="Wealth", y="value", color="Asset", markers=True, color_discrete_map={SHORT[k]: v for k, v in ASSET_COL.items()},
                           category_orders={"Wealth": C.WEALTH, "Asset": [SHORT[k] for k in ASSETS]}, title="Asset ladder: ownership from the poorest to the richest 20%",
                           labels={"value": "% of households owning it", "Wealth": "Wealth quintile"}, hover_data={"n": ":,"})
@@ -103,4 +104,4 @@ def render():
     st.caption("Renting is mostly an urban pattern. A low bank-account share among households whose head has no schooling shows who is left out of formal finance.")
     C.show_table(C.ind_rate("Bank account in household", [by if by != "Wealth" else "Province", "Wealth"]), "assets_bank_by_wealth")
 
-    X.deep_dive("as", ["Television", "Refrigerator", "Mobile phone in household", "Motorcycle / scooter", "Bank account in household"], ["scorecard", "province"])
+    X.deep_dive("as", ["Television", "Refrigerator", "Mobile phone in household", "Motorcycle / scooter", "Bank account in household"], ["scorecard"])

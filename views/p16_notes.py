@@ -13,7 +13,9 @@ def render():
 * **One survey = one province in one year** (e.g. *Punjab 2017*). Compare change over time only within a province.
 * **Weighted percentages** use the sample weight of each table. Groups with fewer than the minimum records (sidebar) are hidden.
 * **Confidence intervals** are approximate (effective sample size, no clustering), so they are slightly optimistic.
-* **Pooled values over several provinces are not national estimates**; switch on *Population-weighted* in the sidebar for a census-weighted view.
+* **Figures not split by survey use the latest survey of each province** (Punjab 2017, Sindh 2018, KP 2019, Balochistan 2019, GB 2016), so survey years are not mixed. Trend charts use all surveys. Picking surveys in the sidebar overrides this.
+* **Population-weighted by default**: each survey is weighted to its province's 2023 census population, so a value over several provinces approximates Pakistan. Single-province values are unaffected.
+* **Water and sanitation follow the JMP 2017 / MICS6 definitions**: tanker-truck and cart with small tank count as improved water sources (they did not in MICS4/5 reports), and a flush toilet to an unknown place counts as improved sanitation.
 * **Vaccination** = any dose by card or mother's report, children 12-35 months. Not full-course coverage.
 * **Missing questions** (for example no marriage-age question in some surveys) are left out, never shown as zero.
 * **Every table and chart can be downloaded**: the camera icon on a chart saves a PNG, and *Show / download the numbers* gives a CSV.""")

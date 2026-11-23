@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -7,6 +8,15 @@ import common as C
 TABLE_CAT = {"hh": "Households & services", "women": "Women & maternal health", "men": "Men", "children": "Child health", "births": "Child mortality",
              "siblings": "Child mortality", "c5to17": "Children 5-17", "nets": "Households & services"}
 
+
+# international reference values (only where a clear benchmark exists); everything else has no default target
+REF_TARGETS = {
+    "Improved drinking water": 100.0, "Improved sanitation": 100.0, "Electricity": 100.0, "Clean cooking fuel / stove": 100.0,
+    "Handwashing water available": 100.0, "Open defecation": 0.0,
+    "BCG: at least one dose (12-35 months)": 90.0, "Polio: at least one dose (12-35 months)": 90.0,
+    "Penta / DPT: at least one dose (12-35 months)": 90.0, "Measles: at least one dose (12-35 months)": 90.0,
+    "Skilled birth attendant": 90.0, "Wasting (weight-for-height < -2 SD)": 5.0,
+}
 
 def _cat(k):
     if "dose" in k:
@@ -89,11 +99,14 @@ def render():
         txt += f" Biggest decline: **{wt.iloc[0]['k']}** ({wt.iloc[0]['ch']:+.1f} {'points' if wt.iloc[0]['unit'] == '%' else wt.iloc[0]['unit']})."
     st.info(txt, icon=":material/summarize:")
     tg_ind = t_all[(t_all["pol"] != 0) & (t_all["unit"] == "%")]
-    tdf = pd.DataFrame({"Indicator": tg_ind["k"].values, "Target (%)": [90.0 if p > 0 else 20.0 for p in tg_ind["pol"]]})
-    with st.expander("Set your own targets (used in the table and the target chart)"):
+    tdf = pd.DataFrame({"Indicator": tg_ind["k"].values, "Target (%)": [REF_TARGETS.get(k_, np.nan) for k_ in tg_ind["k"]]})
+    with st.expander("Targets (reference values pre-filled; edit to use your own)"):
+        st.caption("Pre-filled only where an international benchmark exists: universal access (100%) for water, sanitation, electricity, clean fuel and "
+                   "handwashing (SDG 6 and 7), 0% open defecation (SDG 6.2), 90% vaccine coverage (Immunization Agenda 2030), 90% skilled birth "
+                   "attendance, wasting below 5% (World Health Assembly 2025 target). Blank = no target shown.")
         ed = st.data_editor(tdf, hide_index=True, use_container_width=True if False else None, disabled=["Indicator"], key="sc_targets",
                             column_config={"Target (%)": st.column_config.NumberColumn(min_value=0, max_value=100, step=1)})
-    targets = dict(zip(ed["Indicator"], ed["Target (%)"]))
+    targets = {k_: float(v_) for k_, v_ in zip(ed["Indicator"], ed["Target (%)"]) if pd.notna(v_)}
     f = st.columns(2)
     with f[0]:
         cats = st.multiselect("Category", sorted(t["cat"].unique()), default=sorted(t["cat"].unique()), key="sc_cat")
@@ -202,7 +215,6 @@ def render():
         rr = rr.assign(Survey=rr["Survey"].astype(str)).set_index("Survey")["value"]
         hs[r.k] = [(rr[s_] - rr[sv_cols[i - 1]]) * (r.pol or 0) if i and s_ in rr.index and sv_cols[i - 1] in rr.index else None for i, s_ in enumerate(sv_cols)]
     if hs:
-        import numpy as np
         pv = pd.DataFrame(hs, index=sv_cols).T.astype(float)
         pv = pv.iloc[:, 1:]
         z = pv.values
@@ -219,17 +231,17 @@ def render():
     st.markdown("##### Progress towards a target and province ranking")
     g3 = st.columns(2)
     with g3[0]:   # target progress
-        cand = [k_ for k_ in pc[pc["pol"] != 0]["k"]]
-        dflt = [k_ for k_ in ("Improved sanitation", "Skilled birth attendant", "Measles: at least one dose (12-35 months)", "Stunting (height-for-age < -2 SD)", "Electricity") if k_ in cand]
+        cand = [k_ for k_ in pc[pc["pol"] != 0]["k"] if k_ in targets]
+        dflt = [k_ for k_ in ("Improved sanitation", "Skilled birth attendant", "Measles: at least one dose (12-35 months)", "Wasting (weight-for-height < -2 SD)", "Electricity") if k_ in cand]
         sel = st.multiselect("Indicators for target tracking", cand, default=dflt, key="sc_tg_k")
-        st.caption("Targets come from the table 'Set your own targets' above.")
+        st.caption("Targets come from the 'Targets' table above (indicators without a target are not listed).")
         rows_ = pc[pc["k"].isin(sel)]
         if rows_.empty:
             C.no_data("Pick at least one indicator.")
         else:
             ft = go.Figure()
             for i, r in enumerate(rows_.itertuples()):
-                tgt = targets.get(r.k, 90 if r.pol > 0 else 20)
+                tgt = targets[r.k]
                 done = (r.b >= tgt) if r.pol > 0 else (r.b <= tgt)
                 col = GOOD if done else ("#E8A317" if r.status == "Better" else BAD if r.status == "Worse" else GREY)
                 ft.add_trace(go.Bar(y=[r.k[:38]], x=[r.b], orientation="h", marker_color=col, showlegend=False, text=f"{r.b:.0f}% (was {r.a:.0f}%)", textposition="auto",
@@ -240,7 +252,7 @@ def render():
             ft.update_yaxes(autorange="reversed")
             C.style(ft, max(380, 110 + 55 * len(rows_)), legend=False, bottom=50)
             C.show(ft, key="sc_target")
-            st.caption("Green = target reached, amber = improving but not there yet, red = moving the wrong way, grey = no clear change. Targets are the ones set above; defaults are not official.")
+            st.caption("Green = target reached, amber = improving but not there yet, red = moving the wrong way, grey = no clear change. Pre-filled targets are international reference values (see the Targets table).")
     with g3[1]:   # province rank
         ik = st.selectbox("Indicator for province ranking", list(pc["k"]), index=0, key="sc_rank_k")
         rr = C.ind_rate(ik, "Survey")

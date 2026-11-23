@@ -49,22 +49,8 @@ def render():
         C.trend_chart(r, f"{SHORT[ind]} over time", "%", key="il5")
         C.availability_note(r, SHORT[ind].lower())
     with b:
-        s = C.ind_rate("Improved sanitation", "Survey")
-        dgr = C.ind_rate("Diarrhoea in last 2 weeks", "Survey")
-        if s.empty or dgr.empty:
-            C.no_data()
-        else:
-            m = s[["Survey", "value"]].rename(columns={"value": "san"}).merge(dgr[["Survey", "value", "n"]].rename(columns={"value": "dia"}), on="Survey")
-            m["Province"] = m["Survey"].astype(str).map(C.survey_province)
-            m["Survey"] = m["Survey"].astype(str)
-            fig = px.scatter(m, x="san", y="dia", color="Province", color_discrete_map=C.PROV_COLORS, size="n", size_max=22,
-                             title="Sanitation vs diarrhoea (one dot = one survey, size = records)",
-                             labels={"san": "Households with improved sanitation (%)", "dia": "Children with diarrhoea (%)"}, hover_name="Survey", hover_data={"n": ":,", "Province": False})
-            fig.update_traces(marker=dict(opacity=0.85, line=dict(width=1.5, color="white")))
-            fig.update_xaxes(range=[max(m["san"].min() - 8, 0), min(m["san"].max() + 8, 102)])
-            fig.update_yaxes(range=[max(m["dia"].min() - 5, 0), m["dia"].max() + 5])
-            C.style(fig, 500, legend_title="Province")
-            C.show(fig, key="il6")
+        ua = C.ind_rate(ind, ["Survey", "Area"])
+        C.bar_chart(ua, "Survey", f"{SHORT[ind]}: urban vs rural", "%", color="Area", key="il6")
 
     st.markdown("---")
     a, b = st.columns(2)

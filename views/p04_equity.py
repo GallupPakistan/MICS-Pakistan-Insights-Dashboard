@@ -16,17 +16,13 @@ def render():
         C.no_data("This indicator is not available for the selected filters.")
         return
     r["Survey"], r["Wealth"] = r["Survey"].astype(str), r["Wealth"].astype(str)
-    pu = C.ind_rate(ind, ["Survey", "Wealth"])
-    poor = pu[pu["Wealth"].astype(str) == "Poorest"].copy()
-    rich = pu[pu["Wealth"].astype(str) == "Richest"].copy()
-    for t in (poor, rich):
-        t["Survey"] = t["Survey"].astype(str)
+    pw = C.ind_rate(ind, "Wealth").assign(Wealth=lambda t: t["Wealth"].astype(str)).set_index("Wealth")["value"]   # latest survey of each province
     total = C.overall(ind)
     c = st.columns(4)
-    pv_poor = (poor["value"] * poor["n"]).sum() / poor["n"].sum() if len(poor) else float("nan")
-    pv_rich = (rich["value"] * rich["n"]).sum() / rich["n"].sum() if len(rich) else float("nan")
+    pv_poor = float(pw.get("Poorest", float("nan")))
+    pv_rich = float(pw.get("Richest", float("nan")))
     with c[0]:
-        C.kpi("All households / records", total[0], unit, help="Pooled over the selected surveys")
+        C.kpi("All households / records", total[0], unit, help="Latest survey of each province (or the surveys picked in the sidebar)")
     with c[1]:
         C.kpi("Poorest quintile", pv_poor, unit)
     with c[2]:
@@ -50,6 +46,9 @@ def render():
 
     a, b = st.columns(2)
     with a:
+        pu = C.ind_rate(ind, ["Survey", "Wealth"])
+        poor = pu[pu["Wealth"].astype(str) == "Poorest"].assign(Survey=lambda d: d["Survey"].astype(str))
+        rich = pu[pu["Wealth"].astype(str) == "Richest"].assign(Survey=lambda d: d["Survey"].astype(str))
         if len(poor) and len(rich):
             C.gap_chart(poor, rich, "Poorest", "Richest", f"Wealth gap per survey: {ind}", unit, polarity=pol, key="eq3")
         else:
@@ -63,8 +62,8 @@ def render():
         else:
             C.no_data()
     if pol != 0:
-        st.caption("Bar colour: green = the gap favours the better-off group (higher is better for this indicator) or the group with lower burden, red = it favours the other group. "
+        st.caption("Bar length = size of the gap (a longer bar means more inequality). Blue = the richest / urban group is better off, amber = the poorest / rural group is better off. "
                    "Labels give the gap in " + ("percentage points." if unit == "%" else "deaths per 1,000 births."))
     C.show_table(r, "equity_numbers")
 
-    X.deep_dive("eq", ["Improved sanitation", "Electricity", "Skilled birth attendant", "Stunting (height-for-age < -2 SD)", "Measles: at least one dose (12-35 months)", "Women ever attended school", "Contraceptive use"], ["scorecard", "area_gap", "wealth_gap", "forest", "province"])
+    X.deep_dive("eq", ["Improved sanitation", "Electricity", "Skilled birth attendant", "Stunting (height-for-age < -2 SD)", "Measles: at least one dose (12-35 months)", "Women ever attended school", "Contraceptive use"], ["scorecard", "area_gap", "wealth_gap", "forest"])

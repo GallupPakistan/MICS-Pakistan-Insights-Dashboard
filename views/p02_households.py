@@ -59,23 +59,13 @@ def render():
     if nets is None or nets.empty:
         C.no_data("No mosquito-net records for the current filters (collected only in Balochistan and Sindh).")
     else:
-        a, b, c3 = st.columns(3)
+        # one row per NET here, so household averages (nets per household) and the net-age question (mostly 0 / "more than 36 months"
+        # in the MICS6 files) are not shown: they would be misleading
+        a, b = st.columns(2)
         with a:
-            n_hh = nets.groupby("Survey", observed=True)["hh_nets"].mean().reset_index()
-            n_hh["Survey"] = n_hh["Survey"].astype(str)
-            n_hh = n_hh[n_hh["hh_nets"].notna()]
-            n_hh["label"] = n_hh["hh_nets"].map(lambda v: f"{v:.1f}")
-            fig = px.bar(n_hh, x="Survey", y="hh_nets", color="Survey", color_discrete_map=C.survey_colors(list(n_hh["Survey"])), text="label",
-                         title="Nets per household that owns nets", labels={"hh_nets": "average number of nets"}, category_orders={"Survey": C.survey_order(n_hh["Survey"])})
-            fig.update_traces(textposition="outside", cliponaxis=False)
-            fig.update_yaxes(range=[0, n_hh["hh_nets"].max() * 1.25])
-            C.style(fig, 380, legend=True)
-            C.show(fig, key="nets1")
+            C.bar_chart(C.ind_rate("Nets slept under last night", "Survey"), "Survey", "Nets someone slept under last night", "%", key="nets1", height=380)
         with b:
             C.bar_chart(C.ind_rate("Mosquito nets observed", "Survey"), "Survey", "Nets seen by the interviewer", "%", key="nets2", height=380)
-        with c3:
-            d = C.dist(nets.assign(grp=pd.cut(nets["net_age_m"], [-1, 11, 23, 35, 300], labels=["< 1 year", "1-2 years", "2-3 years", "3+ years"]).astype(object)),
-                       "grp", "Survey")
-            C.dist_chart(d, "grp", "Survey", "Age of the net since obtained", order=["< 1 year", "1-2 years", "2-3 years", "3+ years"], key="nets3", height=380, cat_label="Net age")
+        st.caption("Each record is one net listed in the household. Use = share of listed nets that someone slept under the night before the interview.")
 
     X.deep_dive("hh", ["Electricity", "Clean cooking fuel / stove", "Crowded sleeping rooms", "Female-headed households", "Rented dwelling"], ["scorecard", "wealth_gap"])

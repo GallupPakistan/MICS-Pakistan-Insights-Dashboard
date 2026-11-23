@@ -23,7 +23,8 @@ def render():
         d = C.dist(hh, "WaterSource", by)
         C.dist_chart(d, "WaterSource", by, "Main source of drinking water (all sources)", cmap=C.STATUS_COLORS, order=list(C.STATUS_COLORS), key="w3",
                      height=480, cat_label="Water source")
-        st.caption("Improved = piped, tube well / pump, protected well or spring, bottled / filtered / rain. Unimproved = tanker / cart, unprotected well or spring, surface water, other. "
+        st.caption("Improved (JMP 2017 / MICS6 definition) = piped, tube well / pump, protected well or spring, bottled / filtered / rain, tanker-truck or cart with small tank. "
+                   "Unimproved = unprotected well or spring, surface water (incl. pond / toba), other. "
                    "Local labels (e.g. 'motorized pump (dunky / turbine)', 'hand pump') were grouped under 'Tube well / pump'.")
     with tabs[1]:
         a, b = st.columns(2)

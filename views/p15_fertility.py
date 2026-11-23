@@ -4,7 +4,6 @@ import plotly.express as px
 import streamlit as st
 
 import common as C
-import extras as X
 
 AGES = ["15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49"]
 MARR_BANDS = ["Under 15", "15-17", "18-19", "20-24", "25 and over"]
@@ -35,7 +34,7 @@ def render():
               help="Average age at first marriage among ever-married women aged 25-49 (asked in 8 of 10 surveys).")
     with k[3]:
         C.kpi("Married before 18 (women 25-49)", f"{_mean(mar, 'early') * 100:.0f}%" if len(mar) else "n/a", help="Ever-married women aged 25-49 who married before age 18.")
-    st.caption("Averages are weighted. Marriage age comes from ever-married women only and is missing for Balochistan 2010 and 2019, KP 2019 and Punjab 2011.")
+    st.caption("Averages are weighted. Children ever born uses the standard MICS variable (CEB) and marriage age the computed age at first marriage (WAGEM, ever-married women only); both are available for all 10 surveys.")
     by = C.safe_dim(["Contraceptive use"])
     if by not in w.columns:
         by = "Province"
@@ -73,4 +72,3 @@ def render():
         C.bar_chart(r, "Wealth", "Married before 18, by wealth quintile (women 25-49)", "%", color=by if by != "Wealth" else "Province", key="fe6", height=430)
     st.caption("Colours on the left run from red (married very young) to blue (25 or older). Surveys without a marriage-age question are left out.")
 
-    X.deep_dive("fx", ["Contraceptive use", "Women ever attended school", "Facility delivery", "Caesarean section"], ["scorecard", "wealth_gap", "province"])

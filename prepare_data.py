@@ -267,7 +267,7 @@ def water_group(x):
     return r
 
 
-IMPROVED_WATER = {"Piped water", "Tube well / pump", "Protected well / spring", "Bottled / filtered / rain"}
+IMPROVED_WATER = {"Piped water", "Tube well / pump", "Protected well / spring", "Bottled / filtered / rain", "Tanker / cart"}   # JMP 2017 / MICS6: tanker-truck and cart with small tank are improved
 WATER_ORDER = [g for g, _ in WATER_GRP]
 
 TOILET_ORDER = ["Flush to sewer / septic / pit", "Pit latrine with slab / VIP / composting",
@@ -280,6 +280,7 @@ def toilet_group(x):
     r[s.notna()] = TOILET_ORDER[2]
     r[s.str.contains("FLUSH", na=False) & s.str.contains("SEWER|SEPTIC|PIT|SOAKAGE", na=False)
       & ~s.str.contains("OPEN DRAIN|SOMEWHERE|DK|UNKNOWN", na=False)] = TOILET_ORDER[0]
+    r[s.str.contains("FLUSH", na=False) & s.str.contains("UNKNOWN|DK|DON'T KNOW|NOT SURE", na=False)] = TOILET_ORDER[0]   # JMP: flush to unknown place = improved
     r[s.str.contains("VENTILATED|VIP|WITH SLAB|COMPOST", na=False) & ~s.str.contains("WITHOUT", na=False)] = TOILET_ORDER[1]
     r[s.str.contains("NO FACILITY|BUSH|FIELD", na=False)] = TOILET_ORDER[3]
     r[s.isin(["MISSING", "NO RESPONSE", "DK"])] = pd.NA
@@ -309,8 +310,8 @@ def build_hh(path):
                     r"Household have electricity|Type of fuel using for cooking|Type of cookstove mainly used for cooking|"
                     r"Sex of household head|Education of (head of )?household head|Education of head of household|"
                     r"Treat water to make safer for drinking|Number of mosquito nets|Age of household head|"
-                    r"Television|Household have: Television|Refrigerator|Refrigerator/freezer|Household have: Refrigerator|"
-                    r"Mobile telephone|Any member have a mobile telephone|Motorcycle or scooter|Motorcycle / Scooter / Rickshaw|"
+                    r"Television|Household have: Television|Refrigerator|Refrigerator/freezer|Refrigerator / freezer|Household have: Refrigerator|"
+                    r"Mobile telephone|Any member have a mobile telephone|Motorcycle or scooter|Motorcycle / Scooter / Rickshaw|Motorcycle / scooter|"
                     r"Any member of household own: Motorcycle or scooter|Any household member have account in Bank, PO or National Saving Centre|"
                     r"Any household member have account in Bank, Post office or national saving centre|Any household member own bank account|"
                     r"Household owns the dwelling)$")
@@ -343,9 +344,9 @@ def build_hh(path):
     b["head_age"] = coalesce_num(df, ["Age of household head"], 10, 99)
     b["nets"] = coalesce_num(df, ["Number of mosquito nets"], 0, 30)
     b["has_tv"] = yn(coalesce(df, ["Television", "Household have: Television"]))
-    b["has_fridge"] = yn(coalesce(df, ["Refrigerator", "Refrigerator/freezer", "Household have: Refrigerator"]))
+    b["has_fridge"] = yn(coalesce(df, ["Refrigerator", "Refrigerator/freezer", "Refrigerator / freezer", "Household have: Refrigerator"]))
     b["has_mobile"] = yn(coalesce(df, ["Mobile telephone", "Any member have a mobile telephone"]))
-    b["has_motorbike"] = yn(coalesce(df, ["Motorcycle or scooter", "Motorcycle / Scooter / Rickshaw", "Any member of household own: Motorcycle or scooter"]))
+    b["has_motorbike"] = yn(coalesce(df, ["Motorcycle or scooter", "Motorcycle / Scooter / Rickshaw", "Motorcycle / scooter", "Any member of household own: Motorcycle or scooter"]))
     b["has_bank"] = yn(coalesce(df, ["Any household member have account in Bank, PO or National Saving Centre",
                                       "Any household member have account in Bank, Post office or national saving centre", "Any household member own bank account"]))
     _dw = S(col(df, "Household owns the dwelling"))
@@ -452,7 +453,8 @@ def build_women(path, keyed):
                     r"Area|Area of residence|Area \[HH6\]|Area \(Original\)|Wealth index quintiles?|Women's sample weight|Woman's sample weight|"
                     r"Currently using a method to avoid pregnancy|Currently married|Delivery by caesarean section|Place of delivery|"
                     r"Received antenatal care|Times received antenatal care|Received prenatal care|Times received prenatal care|"
-                    r"Any tetanus toxoid injection during last pregnancy|Ever given birth|Currently smoking cigarettes|Children ever born\.1|Age at first marriage\.1)$|"
+                    r"Any tetanus toxoid injection during last pregnancy|Ever given birth|Currently smoking cigarettes|Children ever born(\.1| \[(CEB|CM10|CM11)\])?|"
+                    r"Age at (first )?marriage(\.1| \[(WAGEM|MA9|MA11)\])?|Age at first marriage of woman|Age at first marriage/union)$|"
                     r"^Antenatal care:|^Prenatal care provider:|^Assistance at delivery:|^Current method:|wife beating justi")
     b = base(df)
     b["w"] = coalesce_num(df, ["Women's sample weight", "Woman's sample weight"])
@@ -522,8 +524,12 @@ def build_women(path, keyed):
     m["District"], m["Division"] = m["hhDistrict"], m["hhDivision"]
     log(f"   women: matched to a household row for {matched.mean():.1%}; Area known {m['Area'].notna().mean():.1%}, Wealth known {m['Wealth'].notna().mean():.1%}")
     m = m.drop(columns=["hhArea", "hhWealth", "hhDistrict", "hhDivision"])
-    m["children_born"] = coalesce_num(df, ["Children ever born.1"], 0, 25).values
-    m["marr_age"] = coalesce_num(df, ["Age at first marriage.1"], 8, 49).values
+    # CEB / WAGEM are the standard MICS computed variables; their column name differs by survey, so take the first one present
+    m["children_born"] = coalesce_num(df, ["Children ever born [CEB]", "Children ever born.1", "Children ever born [CM10]", "Children ever born [CM11]",
+                                           "Children ever born"], 0, 25).values
+    m["marr_age"] = coalesce_num(df, ["Age at first marriage [WAGEM]", "Age at marriage [WAGEM]", "Age at first marriage.1", "Age at first marriage of woman",
+                                      "Age at first marriage/union", "Age at first marriage [MA9]", "Age at first marriage [MA11]", "Age at marriage [MA9]",
+                                      "Age at first marriage", "Age at marriage"], 8, 49).values
     m = m[ok.values]
     m = final(m)
     survey_fill(m, ["children_born", "marr_age"], "women fertility / marriage")
@@ -596,7 +602,7 @@ def build_u5(path, keyed):
             r"Height for age flag WHO|Weight for age flag WHO|Weight for height flag WHO)$|"
             r"^Year( of)? (BCG|Polio|PENTA|Penta|Pentavalent|Pentavelent|DPT|Measles)|^Child ever given (BCG|Polio|Penta|Pentavelent|Pentavalent|DPT|Measles)|"
             r"^(Child had diarrhoea in last 2 weeks|Child ill with fever in last 2 weeks|Drank fluid made from special packet \(ORS\)|Child given ORS packet solution|"
-            r"Child received a Vitamin A dose within the last 6 months|Received a vitamin a dose like \(this/any of these\) within the last 6 months)$")
+            r"Child received a Vitamin A dose within the last 6 months|Child given Vitamin A dose within last 6 months|Received a vitamin a dose like \(this/any of these\) within the last 6 months)$")
     df = read(path, pats)
     b = base(df)
     b["w"] = coalesce_num(df, ["Children's sample weight", "Children under 5's sample weight"])
@@ -628,7 +634,7 @@ def build_u5(path, keyed):
     b["fever"] = yn(col(df, "Child ill with fever in last 2 weeks"))
     _ors = yn(coalesce(df, ["Drank fluid made from special packet (ORS)", "Child given ORS packet solution"]))
     b["ors"] = np.where(b["diarrhoea"].eq(1).to_numpy(bool), _ors, np.nan)                 # only children who had diarrhoea
-    b["vitamin_a"] = yn(coalesce(df, ["Child received a Vitamin A dose within the last 6 months",
+    b["vitamin_a"] = yn(coalesce(df, ["Child received a Vitamin A dose within the last 6 months", "Child given Vitamin A dose within last 6 months",
                                        "Received a vitamin a dose like (this/any of these) within the last 6 months"]))
     groups = {
         "BCG": (r"^Year of BCG", r"^Child ever given BCG"),
@@ -756,7 +762,7 @@ def build_nets(path, keyed):
 def build_c5(path, keyed):
     log("\n== Children 5-17")
     names = pq.ParquetFile(path).schema_arrow.names
-    df = read(path, r"^(Age of child|Age|Sex|Area|Wealth index quintiles?|Children 5-17's sample weight|Mother's education|"
+    df = read(path, r"^(Age of child|Age|Sex|HL4|Area|Wealth index quintiles?|Children 5-17's sample weight|Mother's education|"
                     r"Ever attended school or early childhood programme|Attended school or early childhood programme during current school year|"
                     r"Engaged in any other activity for income in past week|Worked or helped on garden in past week|"
                     r"Child needs to be physically punished to be brought up properly|Number of hours engaged in past week)$|"
@@ -766,10 +772,11 @@ def build_c5(path, keyed):
     age = coalesce_num(df, ["Age of child", "Age"], 5, 17)
     b["Age"] = age
     b["AgeGroup"] = pd.cut(age, bins=[5, 8, 11, 14, 18], labels=["5-7", "8-10", "11-13", "14-17"], right=False).astype("object")
-    b["Sex"] = m_sex(col(df, "Sex"))
+    b["Sex"] = m_sex(coalesce(df, ["Sex", "HL4"]))          # Sindh 2018 stores the child's sex as HL4
     b["MotherEdu"] = m_edu(col(df, "Mother's education"))
     b["ever_school"] = yn(col(df, "Ever attended school or early childhood programme"))
     b["attending"] = yn(col(df, "Attended school or early childhood programme during current school year"))
+    b.loc[b["ever_school"] == 0, "attending"] = 0.0     # asked only of children who ever attended: never attended = not attending now
     b["works_income"] = yn(col(df, "Engaged in any other activity for income in past week"))
     chores = [c for c in names if c.startswith("Household chores in past week")]
     b["chores"] = any_yes(df, chores)

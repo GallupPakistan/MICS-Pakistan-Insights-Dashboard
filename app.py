@@ -99,7 +99,7 @@ pg = st.navigation([st.Page(f, title=t, icon=i, url_path=u, default=(u == "home"
 # ----------------------------------------------------------------------------- filter state (kept in session + in the page address so a view can be shared)
 K = C.FKEY
 DEFAULTS = {"prov": list(C.PROV_ORDER), "surv": [], "area": ["Urban", "Rural"], "sex": ["Male", "Female"], "wealth": list(C.WEALTH), "dist": [],
-            "cmp": "Province", "minn": 50, "ci": False, "pop": False}
+            "cmp": "Province", "minn": 50, "ci": False, "pop": True}
 PRESETS = {
     "Balochistan: rural, poorest 40%": {"prov": ["Balochistan"], "area": ["Rural"], "wealth": ["Poorest", "Second"]},
     "Punjab vs Sindh, latest surveys": {"prov": ["Punjab", "Sindh"], "surv": ["Punjab 2017", "Sindh 2018"], "cmp": "Province"},
@@ -171,8 +171,10 @@ with st.sidebar:
         sel_p = ss.get(K + "prov") or provs
         surveys = [s for s in C.all_surveys() if C.survey_province(s) in sel_p]
         ss[K + "surv"] = [s for s in ss.get(K + "surv", []) if s in surveys]
-        st.multiselect("Survey (province + year)", surveys, key=K + "surv", placeholder="All surveys of the selected provinces",
-                       help="Each survey is one province in one year. Empty = all.")
+        st.multiselect("Survey (province + year)", surveys, key=K + "surv", placeholder="Latest survey per province",
+                       help="Each survey is one province in one year. Empty = trend and by-survey charts use every survey, and all other figures "
+                            "(KPIs, province / area / wealth comparisons) use the latest survey of each province, so survey years are never mixed. "
+                            "Pick surveys here to use exactly those instead.")
         st.multiselect("Area", ["Urban", "Rural"], key=K + "area")
         st.multiselect("Sex", ["Male", "Female"], key=K + "sex",
                        help="Applies to tables with a sex column (children, birth / sibling history, children 5-17, members).")
@@ -186,8 +188,9 @@ with st.sidebar:
         st.slider("Hide groups with fewer than N records", 0, 500, step=10, key=K + "minn", help="Small groups give unreliable percentages.")
         st.toggle("Show 95% confidence intervals", key=K + "ci", help="Approximate (simple random sampling with effective sample size).")
         st.toggle("Population-weighted (Pakistan)", key=K + "pop",
-                  help="Re-weights each province to its 2023 census population, so pooled numbers over several provinces become a national estimate "
-                       "(instead of a sample-weighted mix). Surveys of different years are pooled; Azad Kashmir, Islamabad and FATA before 2018 are not covered.")
+                  help="On (default): each survey is re-weighted to its province's 2023 census population, so a figure over several provinces is a "
+                       "Pakistan estimate instead of a mix driven by sample sizes. Values for a single province or survey do not change. "
+                       "Azad Kashmir, Islamabad and FATA before 2018 are not covered.")
         with st.expander("Quick views & share"):
             st.selectbox("Ready-made views", list(PRESETS), index=None, placeholder="Pick a view ...", key="preset_pick", on_change=_preset)
             q = _write_query()

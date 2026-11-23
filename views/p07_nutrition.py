@@ -13,8 +13,7 @@ def render():
     if k is None or k.empty:
         C.no_data()
         return
-    C.kpi_row(NUT + ["Severe stunting (< -3 SD)", "Early childhood education (36-59 months)"], cols=5,
-              labels={**SHORT, "Severe stunting (< -3 SD)": "Severe stunting", "Early childhood education (36-59 months)": "Early learning (36-59 m)"})
+    C.kpi_row(NUT + ["Severe stunting (< -3 SD)"], cols=4, labels={**SHORT, "Severe stunting (< -3 SD)": "Severe stunting"})
     st.caption("Lower is better for stunting, wasting and underweight. Only children with valid, plausible measurements are counted "
                "(Balochistan 2010 measured fewer than half of its children, so read that survey with care).")
     by = C.safe_dim(NUT)
