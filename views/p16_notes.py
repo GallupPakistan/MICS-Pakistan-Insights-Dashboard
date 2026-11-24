@@ -12,6 +12,12 @@ def render():
         st.markdown("""
 * **One survey = one province in one year** (e.g. *Punjab 2017*). Compare change over time only within a province.
 * **Weighted percentages** use the sample weight of each table. Groups with fewer than the minimum records (sidebar) are hidden.
+* **What is weighted:** every percentage, average, rate, map, scorecard, gap, inequality index and district value uses the MICS sample weight of its table
+  (household weight for households, household members and nets; woman's weight for women, births and siblings; man's weight for men; child weights for
+  children under 5 and 5-17). All 10 surveys have a weight for every record.
+* **What is NOT weighted (marked "unweighted" on the page):** record counts (survey in numbers, records per survey, "n" in hover boxes and tables),
+  the household response rate, the simple average of inequality indices across provinces on the Inequality page, and the district trend line on
+  Research graphics (each district counts once).
 * **Confidence intervals** are approximate (effective sample size, no clustering), so they are slightly optimistic.
 * **Figures not split by survey use the latest survey of each province** (Punjab 2017, Sindh 2018, KP 2019, Balochistan 2019, GB 2016), so survey years are not mixed. Trend charts use all surveys. Picking surveys in the sidebar overrides this.
 * **Population-weighted by default**: each survey is weighted to its province's 2023 census population, so a value over several provinces approximates Pakistan. Single-province values are unaffected.
