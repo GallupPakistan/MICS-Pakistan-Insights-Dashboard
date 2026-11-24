@@ -84,7 +84,7 @@ def equiplot():
         f.add_trace(go.Scatter(x=g["value"], y=g.index, mode="markers", name={"Poorest": "Q1 (poorest)", "Richest": "Q5 (richest)"}.get(q, f"Q{C.WEALTH.index(q) + 1}"),
                                marker=dict(size=17, color=C.WEALTH_COLORS[q], line=dict(width=1.5, color="#fff")), customdata=np.c_[g["n"]],
                                hovertemplate="%{y}<br>" + q + ": %{x:.1f}%<br>records: %{customdata[0]:,}<extra></extra>"))
-    f.update_layout(title=f"{k} by wealth quintile, {prov}", xaxis_title="% of records", yaxis_title="")
+    f.update_layout(title=f"{k} by wealth quintile, {prov}", xaxis_title="% (weighted)", yaxis_title="")
     f.update_yaxes(categoryorder="array", categoryarray=order, autorange="reversed")
     f.update_xaxes(range=[0, 100])
     C.style(f, max(380, 150 + 70 * len(order)), legend_title="Wealth")
@@ -165,6 +165,7 @@ def render():
             ok = v1["minn"] >= MIN_N
             st.markdown(f"* **Units:** {v1['n']} districts-in-survey from {v1['surveys']} surveys ({v1['d']} different districts). Smallest district has {v1['minn']} children (rule: at least {MIN_N}). {'✅' if ok else '⚠️'}\n"
                         f"* **Who is counted:** children aged 12-35 months with an answer for all four vaccines (card or mother's recall); others are left out. Counts **any dose**, not full course.\n"
+                        f"* **Weights:** each district value is weighted with the children's sample weight; the trend line itself is **not weighted** (every district counts once, whatever its size).\n"
                         f"* **Fit:** trend slope {v1['slope']:.2f}, R² = {v1['r2']:.2f}. The grey band is the 95% confidence band of the trend line, not of each district. A high R² is expected here because co-coverage is built from the same four vaccines as the average, so do not read it as a finding.\n"
                         f"* **Caution:** one district appears once per survey, so the same district can show up in several dots. District estimates from MICS have wide margins of error; read the pattern, not single dots.")
         else:
