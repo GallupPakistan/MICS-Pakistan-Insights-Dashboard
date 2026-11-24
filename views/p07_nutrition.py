@@ -20,7 +20,7 @@ def render():
     st.markdown("---")
     C.multi_bar(NUT, by, "Malnutrition indicators", key="n1", labels=SHORT, height=450)
 
-    ind = st.selectbox("Indicator", NUT, key="nut_ind", format_func=lambda x: SHORT[x])
+    ind = C.side().selectbox("Indicator", NUT, key="nut_ind", format_func=lambda x: SHORT[x])
     a, b = st.columns(2)
     with a:
         C.trend_chart(C.ind_rate(ind, "Survey"), f"{SHORT[ind]} over time", "%", key="n2")

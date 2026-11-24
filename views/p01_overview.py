@@ -46,9 +46,9 @@ def render():
     st.markdown("##### Map: where does each province stand?")
     cc = st.columns([3, 2])
     with cc[0]:
-        ind = st.selectbox("Indicator", C.MAP_INDICATORS, index=C.MAP_INDICATORS.index("Improved sanitation"), key="ov_ind")
+        ind = C.side().selectbox("Map: indicator", C.MAP_INDICATORS, index=C.MAP_INDICATORS.index("Improved sanitation"), key="ov_ind")
     with cc[1]:
-        scope = st.radio("Survey shown", ["Latest survey of each province", "Earliest survey of each province"], key="ov_scope", horizontal=True)
+        scope = C.side().radio("Map: survey shown", ["Latest survey of each province", "Earliest survey of each province"], key="ov_scope", horizontal=True)
     left, right = st.columns([3, 2])
     with left:
         mp = C.province_map(ind, scope, key="ov_map")

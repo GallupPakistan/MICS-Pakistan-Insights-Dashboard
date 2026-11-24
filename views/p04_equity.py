@@ -8,7 +8,7 @@ import extras as X
 def render():
     C.page_header("Wealth & equity", "How outcomes differ between the poorest and the richest households, and between urban and rural areas", ":material/balance:")
     keys = list(C.IND)
-    ind = st.selectbox("Indicator", keys, index=keys.index("Improved sanitation"), key="eq_ind", help=C.IND[keys[0]][5])
+    ind = C.side().selectbox("Indicator", keys, index=keys.index("Improved sanitation"), key="eq_ind", help=C.IND[keys[0]][5])
     table, col, unit, pol, where, desc = C.IND[ind]
     st.caption(desc)
     r = C.ind_rate(ind, ["Survey", "Wealth"], min_n=1)

@@ -14,10 +14,10 @@ A_COL, B_COL = "#0B5FA5", "#E8A317"
 def _group_widgets(tag, default_survey):
     surveys = C.all_surveys()
     st.markdown(f"**Group {tag}**")
-    sv = st.multiselect(f"Survey(s) - group {tag}", surveys, default=[default_survey] if default_survey in surveys else surveys[:1], key=f"cmp_sv_{tag}")
-    ar = st.multiselect(f"Area - group {tag}", ["Urban", "Rural"], default=["Urban", "Rural"], key=f"cmp_ar_{tag}")
-    we = st.multiselect(f"Wealth quintile - group {tag}", C.WEALTH, default=C.WEALTH, key=f"cmp_we_{tag}")
-    sx = st.multiselect(f"Sex - group {tag}", ["Male", "Female"], default=["Male", "Female"], key=f"cmp_sx_{tag}")
+    sv = C.side().multiselect(f"Survey(s) - group {tag}", surveys, default=[default_survey] if default_survey in surveys else surveys[:1], key=f"cmp_sv_{tag}")
+    ar = C.side().multiselect(f"Area - group {tag}", ["Urban", "Rural"], default=["Urban", "Rural"], key=f"cmp_ar_{tag}")
+    we = C.side().multiselect(f"Wealth quintile - group {tag}", C.WEALTH, default=C.WEALTH, key=f"cmp_we_{tag}")
+    sx = C.side().multiselect(f"Sex - group {tag}", ["Male", "Female"], default=["Male", "Female"], key=f"cmp_sx_{tag}")
     name = ", ".join(sv) if sv else "all surveys"
     extra = []
     if len(ar) == 1:
@@ -44,7 +44,7 @@ def render():
     with c2:
         B, nameB = _group_widgets("B", "Sindh 2018")
     keys = [k for k in C.IND if C.IND[k][2] == "%"]
-    sel = st.multiselect("Indicators to compare", keys, default=[k for k in DEFAULT if k in keys], key="cmp_inds")
+    sel = C.side().multiselect("Indicators to compare", keys, default=[k for k in DEFAULT if k in keys], key="cmp_inds")
     if not sel:
         C.no_data("Pick at least one indicator.")
         return

@@ -9,7 +9,7 @@ st.set_page_config(page_title="Pakistan MICS Dashboard", page_icon=":material/mo
 
 import common as C  # noqa: E402
 from views import (p01_overview, p02_households, p03_wash, p04_equity, p05_maternal, p06_immunisation, p07_nutrition,  # noqa: E402
-                   p08_mortality, p09_education, p10_explorer, p11_compare, p12_advanced, p13_assets, p14_illness, p15_fertility, p16_notes, p17_men, p18_scorecard, p19_framework, p00_home, p20_equity_visuals)
+                   p08_mortality, p09_education, p10_explorer, p11_compare, p12_advanced, p13_assets, p14_illness, p15_fertility, p16_notes, p17_men, p18_scorecard, p19_framework, p00_home, p20_equity_visuals, p21_trends)
 
 st.markdown("""
 <style>
@@ -74,6 +74,7 @@ st.markdown("""
 PAGES = [
     (p00_home.render, "Home", "🏛️", "home"),
     (p01_overview.render, "Overview", "📋", "overview"),
+    (p21_trends.render, "Trend analysis", "📈", "trends"),
     (p02_households.render, "Households & housing", "🏠", "households"),
     (p03_wash.render, "Water, sanitation & hygiene", "💧", "wash"),
     (p04_equity.render, "Wealth & equity", "⚖️", "equity"),
@@ -88,24 +89,37 @@ PAGES = [
     (p13_assets.render, "Assets & connectivity", "📱", "assets"),
     (p14_illness.render, "Child illness & care", "🤒", "illness"),
     (p15_fertility.render, "Fertility & marriage", "👨‍👩‍👧", "fertility"),
-    (p18_scorecard.render, "KPI scorecard", "📈", "scorecard"),
+    (p18_scorecard.render, "KPI scorecard", "🎯", "scorecard"),
     (p17_men.render, "Women vs men", "👫", "men"),
     (p20_equity_visuals.render, "Research graphics", "🔬", "research"),
     (p19_framework.render, "Concept maps", "🧭", "concepts"),
     (p16_notes.render, "Data notes", "📘", "notes"),
 ]
-pg = st.navigation([st.Page(f, title=t, icon=i, url_path=u, default=(u == "home")) for f, t, i, u in PAGES], position="sidebar", expanded=True)
+# pages are grouped into a few menus in the top bar, so the sidebar is left for the filters only
+SECTIONS = {
+    "Start": ["home", "overview", "trends", "scorecard"],
+    "Households": ["households", "wash", "assets"],
+    "Mothers & children": ["maternal", "immunisation", "nutrition", "illness", "mortality", "fertility"],
+    "Education & gender": ["education", "men"],
+    "Equity": ["equity", "inequality", "research"],
+    "Explore & notes": ["explorer", "compare", "concepts", "notes"],
+}
+_pg = {u: st.Page(f, title=t, icon=i, url_path=u, default=(u == "home")) for f, t, i, u in PAGES}
+assert sorted(sum(SECTIONS.values(), [])) == sorted(_pg), "every page must be in one menu"
+pg = st.navigation({sec: [_pg[u] for u in us] for sec, us in SECTIONS.items()}, position="top")
 
 # ----------------------------------------------------------------------------- filter state (kept in session + in the page address so a view can be shared)
 K = C.FKEY
-DEFAULTS = {"prov": list(C.PROV_ORDER), "surv": [], "area": ["Urban", "Rural"], "sex": ["Male", "Female"], "wealth": list(C.WEALTH), "dist": [],
+A = C.ALL
+DEFAULTS = {"round": A, "prov": A, "surv": A, "area": A, "sex": A, "wealth": A, "dist": A,
             "cmp": "Province", "minn": 50, "ci": False, "pop": True}
 PRESETS = {
-    "Balochistan: rural, poorest 40%": {"prov": ["Balochistan"], "area": ["Rural"], "wealth": ["Poorest", "Second"]},
-    "Punjab vs Sindh, latest surveys": {"prov": ["Punjab", "Sindh"], "surv": ["Punjab 2017", "Sindh 2018"], "cmp": "Province"},
+    "Latest round (MICS6), all provinces": {"round": "MICS6 (2017-20)"},
+    "Earlier round (MICS5), all provinces": {"round": "MICS5 (2014-17)"},
+    "Balochistan, rural": {"prov": "Balochistan", "area": "Rural"},
     "Urban vs rural, all provinces": {"cmp": "Area"},
     "Richest vs poorest, all provinces": {"cmp": "Wealth"},
-    "Girls and boys, latest surveys": {"surv": ["Punjab 2017", "Sindh 2018", "KP 2019", "Balochistan 2019", "GB 2016"], "cmp": "Sex"},
+    "Girls and boys, MICS6": {"round": "MICS6 (2017-20)", "cmp": "Sex"},
 }
 
 
@@ -114,28 +128,26 @@ def _init_state():
     if ss.get("_flt_init"):
         return
     for k, v in DEFAULTS.items():
-        ss[K + k] = list(v) if isinstance(v, list) else v
+        ss[K + k] = v
     qp = st.query_params
     for k, v in DEFAULTS.items():
         if k in qp:
-            raw = qp[k]
-            if isinstance(v, list):
-                ss[K + k] = [x for x in str(raw).split("|") if x]
-            elif isinstance(v, bool):
-                ss[K + k] = str(raw) == "1"
+            raw = str(qp[k])
+            if isinstance(v, bool):
+                ss[K + k] = raw == "1"
             elif isinstance(v, int):
                 try:
                     ss[K + k] = int(raw)
                 except ValueError:
                     pass
             else:
-                ss[K + k] = str(raw)
+                ss[K + k] = raw.split("|")[0] if raw else A
     ss["_flt_init"] = True
 
 
 def _reset():
     for k, v in DEFAULTS.items():
-        st.session_state[K + k] = list(v) if isinstance(v, list) else v
+        st.session_state[K + k] = v
 
 
 def _preset():
@@ -143,7 +155,7 @@ def _preset():
     if name in PRESETS:
         _reset()
         for k, v in PRESETS[name].items():
-            st.session_state[K + k] = list(v) if isinstance(v, list) else v
+            st.session_state[K + k] = v
 
 
 def _write_query():
@@ -152,10 +164,17 @@ def _write_query():
     for k, v in DEFAULTS.items():
         cur = ss.get(K + k, v)
         if cur != v:
-            q[k] = "|".join(cur) if isinstance(cur, list) else ("1" if cur is True else str(cur))
+            q[k] = "1" if cur is True else ("0" if cur is False else str(cur))
     if dict(st.query_params) != q:
         st.query_params.from_dict(q)
     return q
+
+
+def _keep(key, options):
+    """if a dropdown's value is no longer among its options (e.g. after changing province), go back to All"""
+    ss = st.session_state
+    if ss.get(K + key, A) not in options:
+        ss[K + key] = A
 
 
 with st.sidebar:
@@ -167,21 +186,38 @@ with st.sidebar:
         hh = C.load("hh")
         ss = st.session_state
         provs = [p for p in C.PROV_ORDER if p in set(hh["Province"].astype(str))]
-        st.multiselect("Province", provs, key=K + "prov", help="Pick one or more provinces. Empty = all.")
-        sel_p = ss.get(K + "prov") or provs
-        surveys = [s for s in C.all_surveys() if C.survey_province(s) in sel_p]
-        ss[K + "surv"] = [s for s in ss.get(K + "surv", []) if s in surveys]
-        st.multiselect("Survey (province + year)", surveys, key=K + "surv", placeholder="Latest survey per province",
-                       help="Each survey is one province in one year. Empty = trend and by-survey charts use every survey, and all other figures "
-                            "(KPIs, province / area / wealth comparisons) use the latest survey of each province, so survey years are never mixed. "
-                            "Pick surveys here to use exactly those instead.")
-        st.multiselect("Area", ["Urban", "Rural"], key=K + "area")
-        st.multiselect("Sex", ["Male", "Female"], key=K + "sex",
-                       help="Applies to tables with a sex column (children, birth / sibling history, children 5-17, members).")
-        st.multiselect("Wealth quintile", C.WEALTH, key=K + "wealth", help="Poorest 20% ... Richest 20% of households (wealth index).")
-        dists = sorted(hh.loc[hh["Province"].isin(sel_p), "District"].dropna().astype(str).unique())
-        ss[K + "dist"] = [d for d in ss.get(K + "dist", []) if d in dists]
-        st.multiselect("District", dists, key=K + "dist", placeholder="All districts", help="Optional: narrow down to specific districts.")
+        every = C.all_surveys()
+        years = sorted({s.rsplit(" ", 1)[1] for s in every})
+        rounds = [A] + list(C.ROUNDS) + years
+        _keep("round", rounds)
+        st.selectbox("Year / round", rounds, key=K + "round",
+                     help="All = every survey (trend charts use all of them; other figures use the latest survey of each province). "
+                          "A MICS round gives one survey per province (MICS6 = Punjab 2017, Sindh 2018, KP 2019, Balochistan 2019). "
+                          "A single year shows only the provinces surveyed that year.")
+        _keep("prov", [A] + provs)
+        st.selectbox("Province", [A] + provs, key=K + "prov")
+        sel_p = provs if ss[K + "prov"] == A else [ss[K + "prov"]]
+        surveys = C.round_surveys(ss[K + "round"], [s for s in every if C.survey_province(s) in sel_p])
+        _keep("surv", [A] + surveys)
+        st.selectbox("Survey", [A] + surveys, key=K + "surv",
+                     help="One survey = one province in one year (e.g. Punjab 2017 = Punjab MICS 2017-18). The list follows the year / round and province above.")
+        if not surveys:
+            have = ", ".join(s.rsplit(" ", 1)[1] for s in every if C.survey_province(s) in sel_p)
+            st.warning(f"No survey for {ss[K + 'round']} in {C.PSHORT.get(ss[K + 'prov'], ss[K + 'prov'])}. Surveys available: {have}.", icon=":material/info:")
+        st.selectbox("Area", [A, "Urban", "Rural"], key=K + "area")
+        st.selectbox("Sex", [A, "Male", "Female"], key=K + "sex",
+                     help="Applies to tables with a sex column (children, birth / sibling history, children 5-17, household members).")
+        st.selectbox("Wealth quintile", [A] + list(C.WEALTH), key=K + "wealth", help="Poorest 20% ... Richest 20% of households (wealth index).")
+        dmask = hh["Province"].isin(sel_p)
+        if ss[K + "surv"] != A:
+            dmask &= hh["Survey"].astype(str) == ss[K + "surv"]
+        dists = sorted(hh.loc[dmask, "District"].dropna().astype(str).unique())
+        _keep("dist", [A] + dists)
+        st.selectbox("District", [A] + dists, key=K + "dist", help="Optional: one district.")
+        st.button("Reset filters", on_click=_reset, **C.STRETCH, key="reset_top")
+        st.markdown("---")
+        C.set_page_box(st.container())       # the current page puts its own controls here ("This page")
+        st.markdown("---")
         st.markdown("##### Display & weighting")
         st.selectbox("Compare charts by", ["Province", "Survey", "Area", "Wealth", "Sex"], key=K + "cmp",
                      format_func=lambda x: C.DIM_LABEL.get(x, x), help="The group that charts split their bars / lines by (where it makes sense).")
@@ -207,7 +243,6 @@ with st.sidebar:
             unsafe_allow_html=True)
         st.caption("Province colours are used for provinces and surveys (older surveys lighter). Area, sex and wealth colours are fixed too. "
                    "Chart toolbar: camera icon = download the chart as PNG.")
-        st.button("Reset filters", on_click=_reset, **C.STRETCH)
 
         st.markdown("---")
         st.markdown("<div class='brand'><span style='font-size:1.8rem'>🇵🇰</span>Pakistan MICS Dashboard</div>"

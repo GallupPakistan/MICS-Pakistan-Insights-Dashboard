@@ -85,6 +85,13 @@ Records per table (all surveys combined):
 
 Questions that a survey did not ask are left out, never shown as zero.
 
+The Home page lists the 10 surveys (official name, MICS round, fieldwork months taken from the interview dates, sample sizes).
+That table is read from `data/surveys.csv`; sample sizes are counted from the data at run time.
+
+**Trend analysis page:** pick any indicator to see every survey round by province with 95% confidence intervals,
+a table of the change between rounds (pp, pp per year, better / worse / no clear change), the trend split by
+urban-rural, wealth or sex with the gap over time, and a bar chart of every indicator's change for one province.
+
 ## Methodology
 
 - **Weighted percentages** use the sample weight of each table. Groups smaller than the minimum group size (sidebar) are hidden.

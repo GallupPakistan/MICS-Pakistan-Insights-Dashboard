@@ -24,7 +24,7 @@ def render():
     st.markdown("---")
     C.multi_bar(VAC, by, "Children who received at least one dose, by vaccine", key="i1", labels=SHORT, height=470)
 
-    ind = st.selectbox("Vaccine", VAC, index=3, key="imm_ind", format_func=lambda x: SHORT[x])
+    ind = C.side().selectbox("Vaccine", VAC, index=3, key="imm_ind", format_func=lambda x: SHORT[x])
     a, b = st.columns(2)
     with a:
         C.trend_chart(C.ind_rate(ind, "Survey"), f"{SHORT[ind]} (at least one dose) over time", "%", key="i2")

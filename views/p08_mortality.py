@@ -22,7 +22,7 @@ def render():
     C.multi_bar(MORT, by, "Mortality rates (deaths per 1,000 births)", key="d1", labels=SHORT, height=450)
     st.caption("Values are deaths per 1,000 births.")
 
-    ind = st.selectbox("Indicator", MORT, key="mort_ind", format_func=lambda x: SHORT[x])
+    ind = C.side().selectbox("Indicator", MORT, key="mort_ind", format_func=lambda x: SHORT[x])
     a, c = st.columns(2)
     with a:
         C.bar_chart(C.ind_rate(ind, ["Wealth", by if by != "Wealth" else "Province"]), "Wealth", f"{SHORT[ind]} by wealth quintile", "per 1,000",

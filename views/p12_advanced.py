@@ -12,7 +12,7 @@ def render():
     keys = list(C.IND)
 
     with tabs[0]:
-        ind = st.selectbox("Indicator", keys, index=keys.index("Skilled birth attendant"), key="ineq_ind")
+        ind = C.side().selectbox("Inequality: indicator", keys, index=keys.index("Skilled birth attendant"), key="ineq_ind")
         table, col, unit, pol, where, desc = C.IND[ind]
         st.caption(desc)
         t = C.inequality(ind)
@@ -64,18 +64,18 @@ def render():
     with tabs[1]:
         c = st.columns([3, 2, 2, 2])
         with c[0]:
-            ind2 = st.selectbox("Indicator", keys, index=keys.index("Improved sanitation"), key="dist_ind")
+            ind2 = C.side().selectbox("District ranking: indicator", keys, index=keys.index("Improved sanitation"), key="dist_ind")
         df, col, unit, pol, where, desc = C.ind_data(ind2)
         have = C.survey_order(df["Survey"].astype(str).unique()) if df is not None and not df.empty else []
         if not have:
             C.no_data()
             return
         with c[1]:
-            sv = st.selectbox("Survey", have, key="dist_sv")
+            sv = C.side().selectbox("District ranking: survey", have, key="dist_sv")
         with c[2]:
-            topn = st.slider("Districts shown", 5, 40, 20, key="dist_n")
+            topn = C.side().slider("District ranking: districts shown", 5, 40, 20, key="dist_n")
         with c[3]:
-            minn = st.slider("Minimum records per district", 20, 500, 100, step=10, key="dist_min")
+            minn = C.side().slider("District ranking: minimum records per district", 20, 500, 100, step=10, key="dist_min")
         d = df[df["Survey"].astype(str) == sv]
         r = C.rate(d, col, "District", scale=C.ind_scale(unit), where=where, min_n=minn)
         if r.empty:

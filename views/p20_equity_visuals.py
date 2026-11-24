@@ -62,10 +62,10 @@ def equiplot():
     pct = [k for k, v in C.IND.items() if v[2] == "%" and "Wealth" in C.ind_dims(k)]
     c = st.columns(2)
     with c[0]:
-        k = st.selectbox("Indicator", pct, index=pct.index("Skilled birth attendant") if "Skilled birth attendant" in pct else 0, key="ev_eq_k")
+        k = C.side().selectbox("Equiplot: indicator", pct, index=pct.index("Skilled birth attendant") if "Skilled birth attendant" in pct else 0, key="ev_eq_k")
     with c[1]:
         provs = [p for p in C.PROV_ORDER if p in C.get_filters()["provinces"]]
-        prov = st.selectbox("Province", provs, key="ev_eq_p")
+        prov = C.side().selectbox("Equiplot: province", provs, key="ev_eq_p")
     r = C.ind_rate(k, ["Survey", "Wealth"])
     if r is None or r.empty:
         return C.no_data(), None
@@ -97,9 +97,9 @@ def bivariate():
     pct = [k for k, v in C.IND.items() if v[2] == "%"]
     c = st.columns(3)
     with c[0]:
-        kx = st.selectbox("Indicator 1 (columns)", pct, index=pct.index("Measles: at least one dose (12-35 months)") if "Measles: at least one dose (12-35 months)" in pct else 0, key="ev_bx")
+        kx = C.side().selectbox("Map tiles: indicator 1 (columns)", pct, index=pct.index("Measles: at least one dose (12-35 months)") if "Measles: at least one dose (12-35 months)" in pct else 0, key="ev_bx")
     with c[1]:
-        ky = st.selectbox("Indicator 2 (rows)", pct, index=pct.index("Skilled birth attendant") if "Skilled birth attendant" in pct else 1, key="ev_by")
+        ky = C.side().selectbox("Map tiles: indicator 2 (rows)", pct, index=pct.index("Skilled birth attendant") if "Skilled birth attendant" in pct else 1, key="ev_by")
     a, b = C.ind_rate(kx, ["Survey", "District"]), C.ind_rate(ky, ["Survey", "District"])
     if a is None or b is None or a.empty or b.empty:
         return C.no_data(), None
@@ -111,7 +111,7 @@ def bivariate():
     with c[2]:
         opts = C.survey_order(list(m["Survey"].unique()))
         latest = max(opts, key=lambda x: (m["Survey"].eq(x).sum() >= 6, int(x.rsplit(" ", 1)[1]), m["Survey"].eq(x).sum()))   # most recent survey with enough districts
-        sv = st.selectbox("Survey", opts, index=opts.index(latest), key="ev_bs")
+        sv = C.side().selectbox("Map tiles: survey", opts, index=opts.index(latest), key="ev_bs")
     m = m[m["Survey"] == sv].sort_values("District").reset_index(drop=True)
     if len(m) < 6:
         return C.no_data("Fewer than 6 districts in this survey have both indicators."), None

@@ -12,7 +12,7 @@ def render():
     c = st.columns([3, 2, 2, 2])
     c_f = st.columns([3, 2, 2, 2])
     with c[0]:
-        ind = st.selectbox("Indicator", keys, index=keys.index("Improved drinking water"), key="ex_ind")
+        ind = C.side().selectbox("Indicator", keys, index=keys.index("Improved drinking water"), key="ex_ind")
     table = C.IND[ind][0]
     dims = C.ind_dims(ind)
     extra = {"hh": ["District"], "women": ["AgeGroup", "Education", "District"], "men": ["AgeGroup", "Education", "District"],
@@ -21,15 +21,15 @@ def render():
     df0 = C.load(table)
     dims = dims + [e for e in extra if df0 is not None and e in df0.columns]
     with c[1]:
-        x = st.selectbox("Group on the x-axis / rows", dims, index=dims.index("Survey") if "Survey" in dims else 0, key="ex_x", format_func=lambda d: C.DIM_LABEL.get(d, d))
+        x = C.side().selectbox("Group on the x-axis / rows", dims, index=dims.index("Survey") if "Survey" in dims else 0, key="ex_x", format_func=lambda d: C.DIM_LABEL.get(d, d))
     with c[2]:
         col_opts = ["(none)"] + [d for d in dims if d != x]
-        colour = st.selectbox("Split by (colour)", col_opts, index=(col_opts.index("Area") if "Area" in col_opts else 0), key="ex_c", format_func=lambda d: C.DIM_LABEL.get(d, d))
+        colour = C.side().selectbox("Split by (colour)", col_opts, index=(col_opts.index("Area") if "Area" in col_opts else 0), key="ex_c", format_func=lambda d: C.DIM_LABEL.get(d, d))
     with c[3]:
-        kind = st.radio("Chart", ["Bars", "Lines", "Heatmap", "Table"], key="ex_k", horizontal=True)
+        kind = C.side().radio("Chart", ["Bars", "Lines", "Heatmap", "Table"], key="ex_k", horizontal=True)
     with c_f[1]:
         fac_opts = ["(none)"] + [d for d in dims if d not in (x, colour)]
-        facet = st.selectbox("Small multiples (one panel per ...)", fac_opts, key="ex_f", format_func=lambda d: C.DIM_LABEL.get(d, d),
+        facet = C.side().selectbox("Small multiples (one panel per ...)", fac_opts, key="ex_f", format_func=lambda d: C.DIM_LABEL.get(d, d),
                              help="Splits the chart into one panel per group - a third dimension.")
     st.caption(C.IND[ind][5])
     unit = C.IND[ind][2]

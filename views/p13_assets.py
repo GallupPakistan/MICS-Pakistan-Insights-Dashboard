@@ -68,7 +68,7 @@ def render():
     st.caption("Left: the steeper the line, the more ownership depends on wealth. Right: the gap between the purple (urban) and gold (rural) bars is the urban advantage.")
 
     st.markdown("---")
-    ind = st.selectbox("Asset to follow over time", ASSETS, key="as_ind", format_func=lambda x: SHORT[x])
+    ind = C.side().selectbox("Asset to follow over time", ASSETS, key="as_ind", format_func=lambda x: SHORT[x])
     a, b = st.columns(2)
     with a:
         r = C.ind_rate(ind, "Survey")

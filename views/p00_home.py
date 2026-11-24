@@ -4,6 +4,7 @@ import math
 import textwrap
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 import common as C
@@ -59,6 +60,44 @@ def honeycomb(vals):
     return "".join(out)
 
 
+@st.cache_data(show_spinner=False)
+def _survey_rows():
+    """the 10 MICS surveys with fieldwork dates (from the interview dates in the data) and completed interviews per questionnaire"""
+    meta = pd.read_csv(C.data_dir() / "surveys.csv") if (C.data_dir() / "surveys.csv").exists() else None
+    if meta is None:
+        return None
+    for t, lab in (("hh", "Households"), ("women", "Women 15-49"), ("children", "Children under 5"), ("men", "Men 15-49"), ("c5to17", "Children 5-17")):
+        df = C.load(t)
+        cnt = df.groupby(df["Survey"].astype(str), observed=True).size() if df is not None else pd.Series(dtype=int)
+        meta[lab] = meta["Survey"].map(cnt)
+    hh = C.load("hh")
+    if hh is not None and "District" in hh.columns:
+        meta["Districts"] = meta["Survey"].map(hh.groupby(hh["Survey"].astype(str), observed=True)["District"].nunique())
+    meta["_o"] = meta["Province"].map({p: i for i, p in enumerate(C.PROV_ORDER)})
+    meta["_y"] = meta["Survey"].str.rsplit(" ", n=1).str[1].astype(int)
+    return meta.sort_values(["_o", "_y"]).drop(columns=["_o", "_y"])
+
+
+def survey_table():
+    st.markdown("##### Surveys used in this dashboard")
+    st.markdown("Data come from **10 Multiple Indicator Cluster Surveys (MICS)**: household surveys conducted by the provincial Bureaus of Statistics / "
+                "Planning & Development departments with technical and financial support from **UNICEF**, as part of the global MICS programme. "
+                "Each survey is representative of one province (or Gilgit-Baltistan) at the time of fieldwork. Islamabad, Azad Jammu & Kashmir and "
+                "(before 2018) FATA are not covered.")
+    m = _survey_rows()
+    if m is None:
+        return C.no_data("Survey list not found.")
+    show = m.drop(columns=["Survey"]).rename(columns={"Survey name": "Survey"})
+    num = [c for c in ("Districts", "Households", "Women 15-49", "Children under 5", "Children 5-17", "Men 15-49") if c in show.columns]
+    for c in num:                                     # thousands separator, and a dash where the questionnaire was not part of the survey
+        show[c] = show[c].map(lambda v: "—" if pd.isna(v) else f"{int(v):,}")
+    st.dataframe(show[["Survey", "Province", "MICS round", "Fieldwork"] + num], hide_index=True, **C.STRETCH,
+                 column_config={c: st.column_config.TextColumn(c) for c in num})
+    st.caption("Counts = completed interviews used in the dashboard (unweighted). Fieldwork months come from the interview dates recorded in each survey. "
+               "— = that questionnaire was not part of the survey (men and children 5-17 were added in MICS6). In the charts each survey is "
+               "labelled by province and the year fieldwork started (e.g. 'Punjab 2017' = Punjab MICS 2017-18). Source datasets: mics.unicef.org.")
+
+
 def render():
     vals = []
     for emo, label, key, fill, ink in TILES:
@@ -76,16 +115,18 @@ def render():
         "@media(max-width:760px){.mhero{grid-template-columns:1fr}}</style>"
         "<div class='mhero'><div>" + logo +
         "<div style='font-size:54px;font-weight:900;letter-spacing:2px;line-height:1;margin-top:12px'>MICS</div>"
-        "<div style='font-size:11.5px;font-weight:700;letter-spacing:2.2px;margin-top:4px;opacity:.95'>MULTIPLE INDICATOR CLUSTER SURVEY</div>"
+        "<div style='font-size:11.5px;font-weight:700;letter-spacing:2.2px;margin-top:4px;opacity:.95'>MULTIPLE INDICATOR CLUSTER SURVEYS</div>"
         "<div style='font-size:30px;font-weight:300;margin-top:4px'>Pakistan <b style=\"font-weight:800\">2010–2019</b></div>"
         "<div style='display:inline-block;margin-top:8px;background:#F2B705;color:#0B1F3A;font-weight:800;font-style:italic;padding:5px 14px;border-radius:6px;font-size:15px'>Key Findings Dashboard</div>"
-        "<div style='margin-top:8px;font-size:12px;opacity:.9;line-height:1.4'>Punjab · Sindh · KP · Balochistan · Gilgit-Baltistan · 10 household surveys</div>"
+        "<div style='margin-top:8px;font-size:12px;opacity:.9;line-height:1.4'>10 provincial MICS surveys (rounds 4, 5 and 6) · Punjab · Sindh · KP · Balochistan · Gilgit-Baltistan<br>Full list below</div>"
         "</div><div>" + honeycomb(vals) + "</div></div>"
     )
     st.markdown(hero, unsafe_allow_html=True)
     st.caption("Hexagons show the latest survey of each province (Punjab 2017, Sindh 2018, KP 2019, Balochistan 2019, GB 2016), weighted by province population, "
                "i.e. a Pakistan estimate for about 2017-2019. Use the sidebar to change provinces or pick other survey years. "
                "Vaccination counts any dose, so it is higher than official full-course coverage.")
+
+    survey_table()
 
     n = {}
     for t in ("hh", "women", "children", "men"):
@@ -110,10 +151,11 @@ def render():
     st.markdown("##### Explore the dashboard")
     cards = [("🏠", "Households & services", "Housing, water, sanitation, electricity and assets"), ("🤰", "Mother and newborn", "Antenatal care, skilled birth, facility delivery"),
              ("💉", "Child health", "Immunisation, nutrition, illness, mortality"), ("🎓", "Education and gender", "Schooling, women vs men, children 5-17"),
-             ("⚖️", "Equity", "Wealth, urban-rural and district gaps"), ("📈", "Trends and scorecard", "What improved, what worsened, with targets"),
+             ("⚖️", "Equity", "Wealth, urban-rural and district gaps"), ("📈", "Trend analysis", "How each indicator changed between survey rounds, by province and group"),
              ("🆚", "Compare and explore", "Any two groups, with significance tests"), ("📘", "Data notes", "Definitions, methods and survey coverage")]
     html_cards = "".join(
         f"<div style='flex:1 1 230px;background:#fff;border:1px solid #DCE4EE;border-radius:14px;padding:14px 16px'><div style='font-size:26px'>{e}</div>"
         f"<div style='font-weight:800;color:#0B1F3A;margin:4px 0 2px'>{t}</div><div style='font-size:13px;color:#5B6B7F;line-height:1.4'>{d}</div></div>" for e, t, d in cards)
     st.markdown(f"<div style='display:flex;flex-wrap:wrap;gap:12px'>{html_cards}</div>", unsafe_allow_html=True)
-    st.caption("Use the pages in the left sidebar. The filters in the sidebar apply to every page, and the bar at the top of each page shows what is selected.")
+    st.caption("Open pages from the menus in the top bar. The filters in the left sidebar (year / round, province, survey, area, sex, wealth, district) "
+               "apply to every page; each page's own choices (indicator, topic ...) appear under 'This page' in the sidebar.")

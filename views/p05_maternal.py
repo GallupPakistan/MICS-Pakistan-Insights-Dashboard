@@ -23,7 +23,7 @@ def render():
     st.markdown("---")
     C.multi_bar(KEYS[:6], by, "Care along pregnancy and birth", key="m1", labels=SHORT, height=480)
     st.markdown("---")
-    ind = st.selectbox("Indicator", KEYS, index=3, key="mat_ind")
+    ind = C.side().selectbox("Indicator", KEYS, index=3, key="mat_ind")
     a, b = st.columns(2)
     with a:
         C.bar_chart(C.ind_rate(ind, by), by, f"{ind} by {C.DIM_LABEL.get(by, by).lower()}", "%", height=500, key="m2")

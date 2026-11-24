@@ -89,7 +89,7 @@ def _pick(keys, p, label):
     """with many indicators a legend cannot fit in a half-width chart, so let the user choose up to 6"""
     if len(keys) <= 6:
         return keys
-    return st.multiselect(label, keys, default=keys[:6], max_selections=6, key=p + "_pick") or keys[:1]
+    return C.side().multiselect(label, keys, default=keys[:6], max_selections=6, key=p + "_pick") or keys[:1]
 
 
 def gradient(keys, p):
@@ -139,7 +139,7 @@ def trend(keys, p):
 
 
 def forest(keys, p):
-    k = st.selectbox("Indicator for the confidence-interval chart", keys, key=p + "_fk")
+    k = C.side().selectbox("Indicator for the confidence-interval chart", keys, key=p + "_fk")
     r = C.ind_rate(k, "Survey")
     if r is None or r.empty:
         return C.no_data()
@@ -158,9 +158,9 @@ def scatter(keys, p):
         return C.no_data("Need two indicators.")
     c = st.columns(2)
     with c[0]:
-        kx = st.selectbox("Horizontal axis", keys, index=0, key=p + "_sx_x")
+        kx = C.side().selectbox("Scatter: horizontal axis", keys, index=0, key=p + "_sx_x")
     with c[1]:
-        ky = st.selectbox("Vertical axis", keys, index=min(1, len(keys) - 1), key=p + "_sx_y")
+        ky = C.side().selectbox("Scatter: vertical axis", keys, index=min(1, len(keys) - 1), key=p + "_sx_y")
     a, b = C.ind_rate(kx, "Survey"), C.ind_rate(ky, "Survey")
     if a is None or b is None or a.empty or b.empty:
         return C.no_data()
@@ -199,10 +199,10 @@ def sample(tables, p):
 def drill(keys, p):
     c = st.columns(2)
     with c[0]:
-        k = st.selectbox("Drill down: indicator", keys, key=p + "_k")
+        k = C.side().selectbox("Drill down: indicator", keys, key=p + "_k")
     with c[1]:
         dims = [d for d in ("Province", "Survey", "Area", "Wealth", "Sex") if d in C.ind_dims(k)]
-        d = st.selectbox("split by", dims, index=dims.index("Wealth") if "Wealth" in dims else 0, key=p + "_d")
+        d = C.side().selectbox("Drill down: split by", dims, index=dims.index("Wealth") if "Wealth" in dims else 0, key=p + "_d")
     r = C.ind_rate(k, d)
     if r is None or r.empty:
         return C.no_data()

@@ -42,7 +42,7 @@ def render():
         C.availability_note(C.ind_rate("Vitamin A in last 6 months", "Survey"), "vitamin A")
 
     st.markdown("---")
-    ind = st.selectbox("Indicator to follow over time", ILL + CARE, key="il_ind", format_func=lambda x: SHORT[x])
+    ind = C.side().selectbox("Indicator to follow over time", ILL + CARE, key="il_ind", format_func=lambda x: SHORT[x])
     a, b = st.columns(2)
     with a:
         r = C.ind_rate(ind, "Survey")

@@ -87,7 +87,7 @@ def render():
                               "Children 5-17 doing paid / income work": "Doing income work", "Children 5-17 doing household chores": "Doing chores",
                               "Children 5-17 with functional difficulty": "Functional difficulty"})
             by5 = C.safe_dim("Children 5-17 attending school now")
-            ind = st.selectbox("Indicator", [k for k in C.IND if k.startswith("Children 5-17")], key="c5_ind", index=1)
+            ind = C.side().selectbox("Children 5-17: indicator", [k for k in C.IND if k.startswith("Children 5-17")], key="c5_ind", index=1)
             a, b = st.columns(2)
             with a:
                 C.bar_chart(C.ind_rate(ind, by5), by5, f"{ind} by {C.DIM_LABEL.get(by5, by5).lower()}", "%", key="e6")
@@ -120,7 +120,7 @@ def render():
             if not have:
                 C.no_data()
                 return
-            pick = st.selectbox("Survey shown in the pyramid", have, index=len(have) - 1, key="pyr_survey")
+            pick = C.side().selectbox("Population pyramid: survey", have, index=len(have) - 1, key="pyr_survey")
             cur = mem[mem["Survey"].astype(str) == pick]
 
             def wshare(df, cond):

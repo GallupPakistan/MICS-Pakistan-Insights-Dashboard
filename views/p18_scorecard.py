@@ -52,12 +52,12 @@ def render():
         return C.no_data("Select a province with at least two surveys (Punjab, Sindh, KP, Balochistan or Gilgit-Baltistan) in the sidebar.")
     c = st.columns(3)
     with c[0]:
-        prov = st.selectbox("Province", provs, key="sc_prov")
+        prov = C.side().selectbox("Province", provs, key="sc_prov")
     sv = surveys[prov]
     with c[1]:
-        first = st.selectbox("From survey", sv[:-1], index=0, key="sc_a")
+        first = C.side().selectbox("From survey", sv[:-1], index=0, key="sc_a")
     with c[2]:
-        last = st.selectbox("To survey", [s for s in sv if C.survey_order([first, s]).index(s) > 0], index=None, placeholder="latest", key="sc_b") or sv[-1]
+        last = C.side().selectbox("To survey", [s for s in sv if C.survey_order([first, s]).index(s) > 0], index=None, placeholder="latest", key="sc_b") or sv[-1]
     rows, rates = [], {}
     for k, v in C.IND.items():
         r = C.ind_rate(k, "Survey")
@@ -109,9 +109,9 @@ def render():
     targets = {k_: float(v_) for k_, v_ in zip(ed["Indicator"], ed["Target (%)"]) if pd.notna(v_)}
     f = st.columns(2)
     with f[0]:
-        cats = st.multiselect("Category", sorted(t["cat"].unique()), default=sorted(t["cat"].unique()), key="sc_cat")
+        cats = C.side().multiselect("Table: category", sorted(t["cat"].unique()), default=sorted(t["cat"].unique()), key="sc_cat")
     with f[1]:
-        stat = st.multiselect("Status", ["Better", "Worse", "Stable", "Context"], default=["Better", "Worse", "Stable", "Context"], key="sc_st")
+        stat = C.side().multiselect("Table: status", ["Better", "Worse", "Stable", "Context"], default=["Better", "Worse", "Stable", "Context"], key="sc_st")
     t = t[t["cat"].isin(cats) & t["status"].isin(stat)].sort_values(["cat", "k"])
     COL = {"Better": "#2E7D32", "Worse": "#C0392B", "Stable": "#7A8CA3", "Context": "#7A8CA3"}
     DOT = {"Better": "🟢", "Worse": "🔴", "Stable": "⚪", "Context": "⚪"}
@@ -233,7 +233,7 @@ def render():
     with g3[0]:   # target progress
         cand = [k_ for k_ in pc[pc["pol"] != 0]["k"] if k_ in targets]
         dflt = [k_ for k_ in ("Improved sanitation", "Skilled birth attendant", "Measles: at least one dose (12-35 months)", "Wasting (weight-for-height < -2 SD)", "Electricity") if k_ in cand]
-        sel = st.multiselect("Indicators for target tracking", cand, default=dflt, key="sc_tg_k")
+        sel = C.side().multiselect("Indicators for target tracking", cand, default=dflt, key="sc_tg_k")
         st.caption("Targets come from the 'Targets' table above (indicators without a target are not listed).")
         rows_ = pc[pc["k"].isin(sel)]
         if rows_.empty:
@@ -254,7 +254,7 @@ def render():
             C.show(ft, key="sc_target")
             st.caption("Green = target reached, amber = improving but not there yet, red = moving the wrong way, grey = no clear change. Pre-filled targets are international reference values (see the Targets table).")
     with g3[1]:   # province rank
-        ik = st.selectbox("Indicator for province ranking", list(pc["k"]), index=0, key="sc_rank_k")
+        ik = C.side().selectbox("Indicator for province ranking", list(pc["k"]), index=0, key="sc_rank_k")
         rr = C.ind_rate(ik, "Survey")
         pol = C.IND[ik][3]
         rows2 = []
@@ -290,9 +290,9 @@ def render():
             if ss_:
                 latest[pv_] = ss_[-1]
     if len(latest) < 2:
-        C.no_data("Select at least two provinces in the sidebar.")
+        C.no_data("Set Province to All in the sidebar to compare provinces.")
     else:
-        cats_p = st.multiselect("Category", sorted(t_all["cat"].unique()), default=sorted(t_all["cat"].unique()), key="sc_pcat")
+        cats_p = C.side().multiselect("Province view: category", sorted(t_all["cat"].unique()), default=sorted(t_all["cat"].unique()), key="sc_pcat")
         body = ""
         csv_rows = []
         for r in t_all[t_all["cat"].isin(cats_p)].sort_values(["cat", "k"]).itertuples():

@@ -110,7 +110,7 @@ def render():
 
     # ---- 1. hub and spoke ------------------------------------------------------------------
     st.markdown("##### 1. What goes with service use?")
-    k = st.selectbox("Outcome in the centre", list(OUTCOMES), key="fw_out")
+    k = C.side().selectbox("Outcome in the centre", list(OUTCOMES), key="fw_out")
     cfg = OUTCOMES[k]
     df = C.apply(C.load(cfg["table"]), cfg["table"])
     spokes = []

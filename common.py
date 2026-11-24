@@ -203,20 +203,78 @@ FKEY = "flt_"
 POP = {"Punjab": 127_700_000, "Sindh": 55_700_000, "Khyber Pakhtunkhwa": 40_900_000, "Balochistan": 14_900_000, "Gilgit-Baltistan": 1_500_000}
 
 
+ALL = "All"
+SURVEY_ROUND = {"Balochistan 2010": "MICS4", "Punjab 2011": "MICS4", "Punjab 2014": "MICS5", "Sindh 2014": "MICS5", "KP 2016": "MICS5",
+                "GB 2016": "MICS5", "Punjab 2017": "MICS6", "Sindh 2018": "MICS6", "KP 2019": "MICS6", "Balochistan 2019": "MICS6"}
+ROUNDS = {"MICS4 (2010-11)": "MICS4", "MICS5 (2014-17)": "MICS5", "MICS6 (2017-20)": "MICS6"}
+NO_SURVEY = "__no_survey__"          # a round / year chosen that has no survey in the chosen province -> show nothing, not everything
+
+
+def survey_round(s):
+    return SURVEY_ROUND.get(str(s), "MICS6" if int(str(s).rsplit(" ", 1)[1]) >= 2017 else "MICS5")
+
+
+def round_surveys(choice, surveys):
+    """surveys that belong to a 'Year / round' choice: a MICS round label, a year, or All"""
+    if not choice or choice == ALL:
+        return list(surveys)
+    if choice in ROUNDS:
+        return [s for s in surveys if survey_round(s) == ROUNDS[choice]]
+    return [s for s in surveys if str(s).rsplit(" ", 1)[1] == str(choice)]
+
+
+def _one(v, everything):
+    """sidebar dropdowns hold one value or 'All'; the rest of the code works with lists"""
+    if isinstance(v, list):                          # old share links / sessions
+        return v or list(everything)
+    return list(everything) if (v is None or v == ALL) else [v]
+
+
 def get_filters() -> dict:
     ss = st.session_state
+    provinces = _one(ss.get(FKEY + "prov", ALL), PROV_ORDER)
+    surv = ss.get(FKEY + "surv", ALL)
+    rnd = ss.get(FKEY + "round", ALL)
+    if isinstance(surv, list):
+        surveys = surv
+    elif surv and surv != ALL:
+        surveys = [surv]
+    elif rnd and rnd != ALL:
+        cand = [s for s in (all_surveys() if data_ready() else []) if survey_province(s) in provinces]
+        surveys = round_surveys(rnd, cand) or [NO_SURVEY]
+    else:
+        surveys = []
+    dist = ss.get(FKEY + "dist", ALL)
     return dict(
-        provinces=ss.get(FKEY + "prov") or PROV_ORDER,
-        surveys=ss.get(FKEY + "surv") or [],
-        areas=ss.get(FKEY + "area") or ["Urban", "Rural"],
-        wealth=ss.get(FKEY + "wealth") or WEALTH,
-        sexes=ss.get(FKEY + "sex") or ["Male", "Female"],
-        districts=ss.get(FKEY + "dist") or [],
+        provinces=provinces,
+        surveys=surveys,
+        round=rnd if rnd else ALL,
+        areas=_one(ss.get(FKEY + "area", ALL), ["Urban", "Rural"]),
+        wealth=_one(ss.get(FKEY + "wealth", ALL), WEALTH),
+        sexes=_one(ss.get(FKEY + "sex", ALL), ["Male", "Female"]),
+        districts=dist if isinstance(dist, list) else ([] if dist in (None, ALL) else [dist]),
         compare=ss.get(FKEY + "cmp", "Province"),
         min_n=ss.get(FKEY + "minn", 50),
         show_ci=ss.get(FKEY + "ci", False),
         pop=ss.get(FKEY + "pop", True),
     )
+
+
+def set_page_box(box):
+    """app.py hands over the sidebar container for the current page's own controls (kept per user session, never shared between users)"""
+    st.session_state["_page_box"] = box
+    st.session_state["_page_box_head"] = False
+
+
+def side():
+    """where a page puts its own controls: the 'This page' box in the sidebar, so they stay in view while the page scrolls"""
+    box = st.session_state.get("_page_box")
+    if box is None:
+        return st
+    if not st.session_state.get("_page_box_head"):
+        box.markdown("##### This page")
+        st.session_state["_page_box_head"] = True
+    return box
 
 
 def all_surveys():
@@ -449,7 +507,7 @@ def fmt(v, unit="%", d=1):
 
 
 # ----------------------------------------------------------------------------- layout helpers
-PAGE_EMOJI = {"Overview": "📋", "Households": "🏠", "Water": "💧", "Wealth": "⚖️", "Maternal": "🤰", "Child immunisation": "💉",
+PAGE_EMOJI = {"Overview": "📋", "Trend analysis": "📈", "Households": "🏠", "Water": "💧", "Wealth": "⚖️", "Maternal": "🤰", "Child immunisation": "💉",
               "Child nutrition": "🍼", "Child mortality": "🩺", "Education": "🎓", "Compare & data": "🔎", "Compare two": "🆚", "Inequality": "📊", "Assets": "📱", "Child illness": "🤒", "Fertility": "👨‍👩‍👧"}
 KPI_EMOJI = [("water", "💧"), ("sanitation", "🚽"), ("electric", "💡"), ("stunt", "📏"), ("wast", "⚖️"), ("underweight", "⚖️"), ("birth", "🤱"),
              ("vaccin", "💉"), ("dose", "💉"), ("measles", "💉"), ("immunis", "💉"), ("antenatal", "🩺"), ("household", "🏠"), ("women", "👩"), ("men ", "👨"),
@@ -460,7 +518,7 @@ KPI_EMOJI = [("water", "💧"), ("sanitation", "🚽"), ("electric", "💡"), ("
 def page_header(title, subtitle, icon="", badge=None):
     """navy banner (breadcrumb, title, subtitle, one big number) + a slim bar showing the active filters"""
     F = get_filters()
-    surveys = [s for s in (F["surveys"] or all_surveys()) if survey_province(s) in F["provinces"]]
+    surveys = [s for s in (F["surveys"] or all_surveys()) if survey_province(s) in F["provinces"] and s != NO_SURVEY]
     emoji = next((e for k, e in PAGE_EMOJI.items() if title.startswith(k)), "📊")
     bval, blab = badge if badge else (str(len(surveys)), "surveys selected")
     st.markdown(
@@ -472,7 +530,7 @@ def page_header(title, subtitle, icon="", badge=None):
         f"&nbsp;|&nbsp; Wealth: {'all quintiles' if len(F['wealth']) == 5 else ', '.join(F['wealth'])} "
         f"&nbsp;|&nbsp; Districts: {len(F['districts']) or 'all'} &nbsp;|&nbsp; Compare by: <b>{DIM_LABEL.get(F['compare'], F['compare'])}</b> "
         f"&nbsp;|&nbsp; Weights: <b>{'population-weighted Pakistan' if F['pop'] else 'survey sample weights'}</b>"
-        f"&nbsp;|&nbsp; Snapshots: <b>{'surveys you picked' if F['surveys'] else 'latest survey of each province'}</b></div>",
+        f"&nbsp;|&nbsp; Year / round: <b>{F['round']}</b> &nbsp;|&nbsp; Surveys: <b>{', '.join(s for s in F['surveys'] if s != NO_SURVEY) or ('none for this choice' if F['surveys'] else 'all (snapshots use the latest of each province)')}</b></div>",
         unsafe_allow_html=True)
     (st.iframe if hasattr(st, 'iframe') else __import__('streamlit.components.v1', fromlist=['html']).html)("<button onclick=\"window.parent.print()\" style='float:right;padding:6px 14px;border:1px solid #0B5FA5;background:#fff;color:#0B5FA5;"
              "border-radius:8px;font-weight:600;cursor:pointer'>⬇ Save this page as PDF</button>", **({'height': 50} if hasattr(st, 'iframe') else {'height': 50}))

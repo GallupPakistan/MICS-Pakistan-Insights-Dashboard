@@ -25,7 +25,7 @@ def render():
 
     st.markdown("---")
     by = C.safe_dim(HH_INDS[0])
-    ind = st.selectbox("Indicator", HH_INDS, key="hh_ind")
+    ind = C.side().selectbox("Indicator", HH_INDS, key="hh_ind")
     a, b = st.columns(2)
     with a:
         C.bar_chart(C.ind_rate(ind, by), by, f"{ind} by {C.DIM_LABEL.get(by, by).lower()}", "%", height=500, key="hh_bar")
