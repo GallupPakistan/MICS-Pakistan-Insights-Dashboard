@@ -190,7 +190,7 @@ def sample(tables, p):
     f = go.Figure()
     for t, g in d.groupby("Table"):
         f.add_trace(go.Bar(x=g["Survey"], y=g["n"], name=t))
-    f.update_layout(barmode="group", title="Records behind these charts, per survey", yaxis_title="records", xaxis_title="")
+    f.update_layout(barmode="group", title="Records behind these charts, per survey (unweighted counts)", yaxis_title="records (unweighted)", xaxis_title="")
     f.update_xaxes(categoryorder="array", categoryarray=C.survey_order(list(d["Survey"].unique())), tickangle=-30)
     C.style(f, 420, legend_title="Table", bottom=140)
     C.show(f, key=p + "_sm")
