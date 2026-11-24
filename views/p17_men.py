@@ -28,7 +28,7 @@ def _pair(m, w, col, by, scale=100.0):
     return d
 
 
-def _grouped(d, by, title, key, order=None, height=420, ytitle="% of records"):
+def _grouped(d, by, title, key, order=None, height=420, ytitle="% (weighted)"):
     if d.empty:
         return C.no_data("Men were interviewed only in Balochistan 2019, KP 2019, Punjab 2017 and Sindh 2018. Select at least one of them in the sidebar.")
     f = go.Figure()
