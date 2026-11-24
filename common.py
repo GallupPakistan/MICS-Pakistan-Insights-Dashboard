@@ -38,7 +38,18 @@ def show(fig, key=None):
             fig.update_layout(margin_r=max(fig.layout.margin.r or 0, 56))
     except Exception:
         pass
+    _label_counts(fig)
     st.plotly_chart(fig, **STRETCH, key=key, config=PLOT_CONFIG)
+
+
+def _label_counts(fig):
+    """values are weighted, but 'n' is a plain count of interviews: say so in every hover box"""
+    for t in fig.data:
+        h = getattr(t, "hovertemplate", None)
+        if h:
+            h = (h.replace("<br>n_group=", "<br>records in group (unweighted)=").replace("<br>n=", "<br>records (unweighted)=")
+                  .replace("<br>n = ", "<br>records (unweighted) = ").replace("records: ", "records (unweighted): "))
+            t.hovertemplate = h
 
 
 # ----------------------------------------------------------------------------- data location
@@ -512,7 +523,7 @@ def kpi_row(keys, cols=None, labels=None):
     for c, k in zip(cols, keys):
         with c:
             val, delta, n, unit, pol, desc = overall(k)
-            kpi((labels or {}).get(k, k), val, unit, delta, pol, help=f"{desc}  (n = {n:,} records)")
+            kpi((labels or {}).get(k, k), val, unit, delta, pol, help=f"{desc}  Value is weighted; n = {n:,} interviews (unweighted count).")
 
 
 def show_table(df, name, label="Show / download the numbers"):
@@ -567,11 +578,23 @@ TABLE_NOUN = {"hh": "households", "women": "women", "men": "men", "children": "c
 def pct_axis(keys):
     """'% of children' when every indicator is about the same kind of record, otherwise '% of records'"""
     nouns = {TABLE_NOUN.get(IND[k][0], "records") for k in keys if k in IND}
-    return f"% of {nouns.pop()}" if len(nouns) == 1 else "% of records"
+    return f"% of {nouns.pop()} (weighted)" if len(nouns) == 1 else "% (weighted)"
 
 
 def unit_axis(unit):
-    return "% of records" if unit == "%" else ("deaths per 1,000 births" if unit == "per 1,000" else unit)
+    return "% (weighted)" if unit == "%" else ("deaths per 1,000 births (weighted)" if unit == "per 1,000" else unit + " (weighted)")
+
+
+CROWDED = 16          # more bars than this in one grouped chart -> no value labels on the bars (hover still shows them)
+
+
+def _short_axis(fig, by, orient="v"):
+    """long province names (Khyber Pakhtunkhwa, Gilgit-Baltistan) overlap on a category axis: show KP / GB instead"""
+    if by != "Province":
+        return
+    ax = fig.update_yaxes if orient == "h" else fig.update_xaxes
+    vals = [p for p in PROV_ORDER]
+    ax(tickmode="array", tickvals=vals, ticktext=[PSHORT.get(p, p) for p in vals], tickangle=0)
 
 
 def bar_chart(rt, by, title, unit="%", color=None, height=420, orient="v", sort=True, ci=None, ytitle=None, key=None):
@@ -605,6 +628,9 @@ def bar_chart(rt, by, title, unit="%", color=None, height=420, orient="v", sort=
             kw.update(error_x="err_plus", error_x_minus="err_minus")
     fig = px.bar(d, title=title, **kw)
     fig.update_traces(textposition="outside", cliponaxis=False, textfont_size=11, opacity=1)
+    if color and len(d) > CROWDED:                    # too many bars side by side: value labels would collide, keep them in the hover
+        fig.update_traces(text=None, texttemplate=None)
+    _short_axis(fig, by, orient)
     if orient == "h":
         fig.update_xaxes(range=[0, max(d["value"].max() * 1.18, 1)], title=ytitle or unit_axis(unit))
     else:
@@ -615,7 +641,7 @@ def bar_chart(rt, by, title, unit="%", color=None, height=420, orient="v", sort=
     if orient == "h":
         fig.update_yaxes(title=None)
     else:
-        fig.update_xaxes(title=None, tickangle=-30 if (d[by].nunique() > 4 or by in ("Survey", "District")) else 0)
+        fig.update_xaxes(title=None, tickangle=0 if by == "Province" else (-30 if (d[by].nunique() > 4 or by in ("Survey", "District")) else 0))
     show(fig, key=key)
 
 
@@ -671,9 +697,11 @@ def trend_chart(rt, title, unit="%", height=500, ytitle=None, key=None, color="P
     fig.update_traces(line_width=3, marker_size=9, textfont_size=12, cliponaxis=False)
     for ti, tr in enumerate(fig.data):
         tr.textposition = [pos[(ti, pi)] for pi in range(len(tr.x))]
-        tr.text = ["" if (ti, pi) in hide else t_ for pi, t_ in enumerate(tr.text)]
+        last = len(tr.x) - 1                          # only the latest survey of each province gets a label; the rest are in the hover
+        tr.text = ["" if ((ti, pi) in hide or pi != last) else t_ for pi, t_ in enumerate(tr.text)]
     yrs = sorted(d["Year"].unique())
-    fig.update_xaxes(tickmode="array", tickvals=yrs, ticktext=[str(y) for y in yrs], range=[min(yrs) - 0.8, max(yrs) + 0.8])
+    fig.update_xaxes(tickmode="array", tickvals=yrs, ticktext=[(str(y) if i == 0 else "'" + str(y)[2:]) for i, y in enumerate(yrs)],
+                     range=[min(yrs) - 0.8, max(yrs) + 0.8], tickangle=0, tickfont_size=11)   # 2010, '11, '14 ... fits without overlapping
     ytop = max(d["value"].max(), 1) * 1.22
     if unit == "%":                                   # a percentage axis should not run far past 100
         ytop = min(ytop, 112)
@@ -696,9 +724,9 @@ def dist_chart(dd, cat, by, title, cmap=None, order=None, height=430, key=None, 
     cmap = cmap or {c: CAT_COLORS[i % len(CAT_COLORS)] for i, c in enumerate(order)}
     fig = px.bar(d, y=by, x="pct", color=cat, orientation="h", text="txt", color_discrete_map=cmap,
                  category_orders={cat: order, by: cat_order(by, d[by])[::-1]}, title=title,
-                 labels={"pct": "% of records in the group", by: DIM_LABEL.get(by, by), cat: cat_label or cat}, hover_data={"txt": False, "n_group": ":,"})
+                 labels={"pct": "% of the group (weighted)", by: DIM_LABEL.get(by, by), cat: cat_label or cat}, hover_data={"txt": False, "n_group": ":,"})
     fig.update_traces(textposition="inside", insidetextanchor="middle", textfont=dict(size=11, color="white"))
-    fig.update_xaxes(range=[0, 100], title="% of records in the group")
+    fig.update_xaxes(range=[0, 100], title="% of the group (weighted)")
     style(fig, height, legend_title=cat_label or cat, bottom=150)
     fig.update_yaxes(title=None)
     show(fig, key=key)
@@ -820,7 +848,7 @@ def province_map(key_ind, scope="Latest survey of each province", height=560, ke
                              textfont=dict(size=13, color=[_txt(p) for p in labs]), hoverinfo="skip", showlegend=False))
     fig.add_trace(go.Scatter(x=[0], y=[0], mode="markers", hoverinfo="skip", showlegend=False,
                              marker=dict(size=1, color=[lo], colorscale=scale, cmin=lo, cmax=hi, showscale=True,
-                                         colorbar=dict(title=dict(text=("% of records" if unit == "%" else unit), side="right"), thickness=16, len=0.75))))
+                                         colorbar=dict(title=dict(text=("% (weighted)" if unit == "%" else unit + " (weighted)"), side="right"), thickness=16, len=0.75))))
     fig.update_layout(title=f"{key_ind} - {scope.lower()}")
     style(fig, height, legend=False, bottom=10)
     fig.update_xaxes(visible=False, range=[60.3, 77.8], showgrid=False, zeroline=False, fixedrange=True)
@@ -852,8 +880,10 @@ def multi_bar(keys, by, title, height=450, key=None, labels=None):
                  category_orders={by: cat_order(by, d[by]), "Indicator": ind_order}, title=title,
                  labels={"value": unit_axis(unit), by: DIM_LABEL.get(by, by)}, hover_data={"n": ":,", "label": False})
     fig.update_traces(textposition="outside", cliponaxis=False, textfont_size=11)
+    if len(d) > CROWDED:                              # many groups x many indicators: labels would overlap
+        fig.update_traces(text=None, texttemplate=None)
     fig.update_yaxes(range=[0, max(d["value"].max(), 1) * 1.18], title=unit_axis(unit))
-    fig.update_xaxes(title="")
+    fig.update_xaxes(title="", tickangle=0)
     style(fig, height, legend_title=DIM_LABEL.get(by, by))
     show(fig, key=key)
     return d
