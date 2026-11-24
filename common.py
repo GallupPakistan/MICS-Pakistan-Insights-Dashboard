@@ -38,7 +38,28 @@ def show(fig, key=None):
             fig.update_layout(margin_r=max(fig.layout.margin.r or 0, 56))
     except Exception:
         pass
+    _label_counts(fig)
     st.plotly_chart(fig, **STRETCH, key=key, config=PLOT_CONFIG)
+
+
+WEIGHTED_AXES = {"children per woman", "years", "children", "members", "average", "mean"}
+
+
+def _label_counts(fig):
+    """values are weighted, but 'n' is a plain count of interviews: say so in every hover box"""
+    for t in fig.data:
+        h = getattr(t, "hovertemplate", None)
+        if h:
+            h = (h.replace("<br>n_group=", "<br>records in group (unweighted)=").replace("<br>n=", "<br>records (unweighted)=")
+                  .replace("<br>n = ", "<br>records (unweighted) = ").replace("records: ", "records (unweighted): "))
+            t.hovertemplate = h
+    # every value axis shows weighted figures: add "(weighted)" to any value-axis title that does not say it yet
+    lay = fig.layout.to_plotly_json()
+    for ax in [k for k in lay if k.startswith(("xaxis", "yaxis"))]:
+        txt = ((lay[ax].get("title") or {}).get("text") or "")
+        low = txt.lower()
+        if txt and "weighted" not in low and ("%" in txt or low in WEIGHTED_AXES or " per " in f" {low}"):
+            fig.layout[ax].title.text = txt + " (weighted)"
 
 
 # ----------------------------------------------------------------------------- data location
@@ -512,7 +533,7 @@ def kpi_row(keys, cols=None, labels=None):
     for c, k in zip(cols, keys):
         with c:
             val, delta, n, unit, pol, desc = overall(k)
-            kpi((labels or {}).get(k, k), val, unit, delta, pol, help=f"{desc}  (n = {n:,} records)")
+            kpi((labels or {}).get(k, k), val, unit, delta, pol, help=f"{desc}  Value is weighted; n = {n:,} interviews (unweighted count).")
 
 
 def show_table(df, name, label="Show / download the numbers"):
@@ -567,11 +588,11 @@ TABLE_NOUN = {"hh": "households", "women": "women", "men": "men", "children": "c
 def pct_axis(keys):
     """'% of children' when every indicator is about the same kind of record, otherwise '% of records'"""
     nouns = {TABLE_NOUN.get(IND[k][0], "records") for k in keys if k in IND}
-    return f"% of {nouns.pop()}" if len(nouns) == 1 else "% of records"
+    return f"% of {nouns.pop()} (weighted)" if len(nouns) == 1 else "% (weighted)"
 
 
 def unit_axis(unit):
-    return "% of records" if unit == "%" else ("deaths per 1,000 births" if unit == "per 1,000" else unit)
+    return "% (weighted)" if unit == "%" else ("deaths per 1,000 births (weighted)" if unit == "per 1,000" else unit + " (weighted)")
 
 
 CROWDED = 16          # more bars than this in one grouped chart -> no value labels on the bars (hover still shows them)
@@ -713,9 +734,9 @@ def dist_chart(dd, cat, by, title, cmap=None, order=None, height=430, key=None, 
     cmap = cmap or {c: CAT_COLORS[i % len(CAT_COLORS)] for i, c in enumerate(order)}
     fig = px.bar(d, y=by, x="pct", color=cat, orientation="h", text="txt", color_discrete_map=cmap,
                  category_orders={cat: order, by: cat_order(by, d[by])[::-1]}, title=title,
-                 labels={"pct": "% of records in the group", by: DIM_LABEL.get(by, by), cat: cat_label or cat}, hover_data={"txt": False, "n_group": ":,"})
+                 labels={"pct": "% of the group (weighted)", by: DIM_LABEL.get(by, by), cat: cat_label or cat}, hover_data={"txt": False, "n_group": ":,"})
     fig.update_traces(textposition="inside", insidetextanchor="middle", textfont=dict(size=11, color="white"))
-    fig.update_xaxes(range=[0, 100], title="% of records in the group")
+    fig.update_xaxes(range=[0, 100], title="% of the group (weighted)")
     style(fig, height, legend_title=cat_label or cat, bottom=150)
     fig.update_yaxes(title=None)
     show(fig, key=key)
@@ -837,7 +858,7 @@ def province_map(key_ind, scope="Latest survey of each province", height=560, ke
                              textfont=dict(size=13, color=[_txt(p) for p in labs]), hoverinfo="skip", showlegend=False))
     fig.add_trace(go.Scatter(x=[0], y=[0], mode="markers", hoverinfo="skip", showlegend=False,
                              marker=dict(size=1, color=[lo], colorscale=scale, cmin=lo, cmax=hi, showscale=True,
-                                         colorbar=dict(title=dict(text=("% of records" if unit == "%" else unit), side="right"), thickness=16, len=0.75))))
+                                         colorbar=dict(title=dict(text=("% (weighted)" if unit == "%" else unit + " (weighted)"), side="right"), thickness=16, len=0.75))))
     fig.update_layout(title=f"{key_ind} - {scope.lower()}")
     style(fig, height, legend=False, bottom=10)
     fig.update_xaxes(visible=False, range=[60.3, 77.8], showgrid=False, zeroline=False, fixedrange=True)
