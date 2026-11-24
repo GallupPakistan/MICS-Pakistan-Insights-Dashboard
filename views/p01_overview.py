@@ -94,7 +94,7 @@ def render():
             rr["label"] = rr["rate"].map(lambda v: f"{v:.0f}%")
             cm = C.survey_colors(list(rr["Survey"]))
             f2 = px.bar(rr, y="Survey", x="rate", orientation="h", text="label", color="Survey", color_discrete_map=cm, title="Household response rate (unweighted)",
-                        category_orders={"Survey": C.survey_order(rr["Survey"])[::-1]}, labels={"rate": "% interviewed"},
+                        category_orders={"Survey": C.survey_order(rr["Survey"])[::-1]}, labels={"rate": "% interviewed (unweighted)"},
                         hover_data={"sampled": ":,", "households": ":,", "label": False, "rate": ":.1f"})
             f2.update_traces(textposition="outside", cliponaxis=False)
             f2.update_xaxes(range=[0, 112])
