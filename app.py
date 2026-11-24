@@ -69,6 +69,14 @@ st.markdown("""
   div[data-testid="stMain"] div[data-testid="stExpander"], div[data-testid="stDataFrame"] {background:#FFFFFF; border-radius:10px;}
   .main h5 {color:#0B1F3A; border-bottom:2px solid #DCE4EE; padding-bottom:4px; margin-top:.4rem;}
   hr {border-color:#DCE4EE;}
+  .st-key-pagemenu {background:#fff; border:1px solid #DCE4EE; border-radius:14px; padding:12px 18px 8px; margin-bottom:8px;}
+  .st-key-pagemenu [data-testid="stVerticalBlock"] {gap:0 !important;}
+  .st-key-pagemenu .menuhead {font-size:12px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#0A4AA8;
+                               border-bottom:2px solid #E3E9F0; padding:6px 0 3px; margin:2px 0 2px; white-space:nowrap;}
+  .st-key-pagemenu [data-testid="stMarkdown"], .st-key-pagemenu [data-testid="stMarkdownContainer"] {margin-bottom:6px !important;}
+  .st-key-pagemenu [data-testid="stPageLink"] a {padding:1px 8px !important; border-radius:6px;}
+  .st-key-pagemenu [data-testid="stPageLink"] a p {font-size:14px !important; white-space:nowrap;}
+  .st-key-pagemenu [data-testid="stPageLink"] a:hover {background:#EEF4FB;}
 </style>""", unsafe_allow_html=True)
 
 PAGES = [
@@ -106,7 +114,24 @@ SECTIONS = {
 }
 _pg = {u: st.Page(f, title=t, icon=i, url_path=u, default=(u == "home")) for f, t, i, u in PAGES}
 assert sorted(sum(SECTIONS.values(), [])) == sorted(_pg), "every page must be in one menu"
-pg = st.navigation({sec: [_pg[u] for u in us] for sec, us in SECTIONS.items()}, position="top")
+pg = st.navigation(list(_pg.values()), position="hidden")      # the visible menu is drawn by page_menu() below
+SHORT_TITLE = {"education": "Education & children 5-17", "illness": "Child illness & care", "mortality": "Child mortality & siblings",
+               "wash": "Water & sanitation", "explorer": "Data explorer", "inequality": "Inequality & districts"}
+SECTION_ICON = {"Start": "🏁", "Households": "🏠", "Mothers & children": "🤱", "Education & gender": "🎓", "Equity": "⚖️", "Explore & notes": "🔎"}
+
+
+def page_menu():
+    """every page visible at once, grouped in six columns at the top of the page (no dropdowns, nothing hidden)"""
+    groups = [["Start", "Households"], ["Mothers & children"], ["Education & gender", "Equity"], ["Explore & notes"]]
+    with st.container(key="pagemenu"):
+        cols = st.columns(len(groups), gap="medium")
+        for col, secs in zip(cols, groups):
+            with col:
+                for sec in secs:
+                    st.markdown(f"<div class='menuhead'>{SECTION_ICON.get(sec, '')} {sec}</div>", unsafe_allow_html=True)
+                    for u in SECTIONS[sec]:
+                        f, t, i, _u = next(x for x in PAGES if x[3] == u)
+                        st.page_link(_pg[u], label=SHORT_TITLE.get(u, t), icon=i)
 
 # ----------------------------------------------------------------------------- filter state (kept in session + in the page address so a view can be shared)
 K = C.FKEY
@@ -255,4 +280,5 @@ if not C.data_ready():
                 "```\npython prepare_data.py \"C:\\Users\\DELL\\Desktop\\MICS\\parquet\" \"data\"\n```")
     st.stop()
 
+page_menu()
 pg.run()

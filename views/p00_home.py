@@ -157,5 +157,5 @@ def render():
         f"<div style='flex:1 1 230px;background:#fff;border:1px solid #DCE4EE;border-radius:14px;padding:14px 16px'><div style='font-size:26px'>{e}</div>"
         f"<div style='font-weight:800;color:#0B1F3A;margin:4px 0 2px'>{t}</div><div style='font-size:13px;color:#5B6B7F;line-height:1.4'>{d}</div></div>" for e, t, d in cards)
     st.markdown(f"<div style='display:flex;flex-wrap:wrap;gap:12px'>{html_cards}</div>", unsafe_allow_html=True)
-    st.caption("Open pages from the menus in the top bar. The filters in the left sidebar (year / round, province, survey, area, sex, wealth, district) "
+    st.caption("Open any page from the page menu at the top. The filters in the left sidebar (year / round, province, survey, area, sex, wealth, district) "
                "apply to every page; each page's own choices (indicator, topic ...) appear under 'This page' in the sidebar.")
