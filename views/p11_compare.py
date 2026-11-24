@@ -105,7 +105,7 @@ def render():
         for nm, v, lo, hi, col in ((label("A", nameA), "A", "A_lo", "A_hi", A_COL), (label("B", nameB), "B", "B_lo", "B_hi", B_COL)):
             f.add_trace(go.Scatter(x=o[v], y=o["Indicator"], mode="markers", name=nm, marker=dict(size=10, color=col),
                                    error_x=dict(type="data", symmetric=False, array=o[hi] - o[v], arrayminus=o[v] - o[lo], color=col)))
-        f.update_layout(title="Values with 95% confidence intervals", xaxis_title="% of records", yaxis_title="")
+        f.update_layout(title="Values with 95% confidence intervals", xaxis_title="% (weighted)", yaxis_title="")
         C.style(f, max(420, 90 + 50 * len(o)), legend_title="Group")
         C.show(f, key="cmp3")
     with r1[1]:  # 2 scatter A vs B
