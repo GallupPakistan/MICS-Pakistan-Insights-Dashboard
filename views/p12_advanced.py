@@ -27,13 +27,13 @@ def render():
             with c1:
                 C.kpi("Surveys with an index", f"{len(t)}")
             with c2:
-                C.kpi("Slope index, latest surveys (avg.)", f"{_lt['SII'].mean():+.1f}" + (" pp" if unit == "%" else " per 1,000"),
+                C.kpi("Slope index, latest surveys (simple avg.)", f"{_lt['SII'].mean():+.1f}" + (" pp" if unit == "%" else " per 1,000"),
                       help="Slope index of inequality: absolute gap between the richest and poorest end of the wealth ranking, using all five quintiles. "
-                           "Averaged over the latest survey of each province (or the surveys picked in the sidebar).")
+                           "Each survey's index is computed from weighted quintile values; the card is a simple (unweighted) average over the latest survey of each province.")
             with c3:
-                C.kpi("Concentration index, latest surveys (avg.)", f"{_lt['CI'].mean():+.3f}",
+                C.kpi("Concentration index, latest surveys (simple avg.)", f"{_lt['CI'].mean():+.3f}",
                       help="Between -1 and +1. Positive = the outcome is concentrated among richer households, negative = among poorer ones, 0 = equal. "
-                           "Averaged over the latest survey of each province.")
+                           "Simple (unweighted) average over the latest survey of each province; each index is computed from weighted data.")
             a, b = st.columns(2)
             with a:
                 t["label"] = t["SII"].map(lambda v: f"{v:+.1f}")
