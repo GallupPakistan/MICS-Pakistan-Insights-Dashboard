@@ -81,7 +81,7 @@ def render():
                                    colorbar=dict(title=dict(text="records (log scale)", side="right"), thickness=14, tickvals=[1, 2, 3, 4, 5],
                                                  ticktext=["10", "100", "1,000", "10,000", "100,000"]),
                                    hovertemplate="%{y} - %{x}: %{text}<extra></extra>"))
-        fig.update_layout(title="Records per survey and table ('no data' = not collected)", yaxis=dict(autorange="reversed"))
+        fig.update_layout(title="Records per survey and table: unweighted counts ('no data' = not collected)", yaxis=dict(autorange="reversed"))
         fig.update_xaxes(tickangle=-35)
         C.style(fig, 470, legend=False, bottom=95)
         fig.update_xaxes(side="bottom", tickangle=-35)
@@ -93,7 +93,7 @@ def render():
             rr["rate"] = rr["response_rate"] * 100
             rr["label"] = rr["rate"].map(lambda v: f"{v:.0f}%")
             cm = C.survey_colors(list(rr["Survey"]))
-            f2 = px.bar(rr, y="Survey", x="rate", orientation="h", text="label", color="Survey", color_discrete_map=cm, title="Household response rate",
+            f2 = px.bar(rr, y="Survey", x="rate", orientation="h", text="label", color="Survey", color_discrete_map=cm, title="Household response rate (unweighted)",
                         category_orders={"Survey": C.survey_order(rr["Survey"])[::-1]}, labels={"rate": "% interviewed"},
                         hover_data={"sampled": ":,", "households": ":,", "label": False, "rate": ":.1f"})
             f2.update_traces(textposition="outside", cliponaxis=False)
