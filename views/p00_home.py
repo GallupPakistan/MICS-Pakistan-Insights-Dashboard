@@ -94,6 +94,7 @@ def render():
         except Exception:
             n[t] = 0
     st.markdown("##### The survey in numbers")
+    st.caption("Counts of completed interviews in the data (unweighted). Every percentage, average and rate in the dashboard uses the survey sample weights.")
     c = st.columns(5)
     with c[0]:
         C.kpi("Surveys", f"{len(C.all_surveys())}", unit="", help="Province-year surveys between 2010 and 2019.")
