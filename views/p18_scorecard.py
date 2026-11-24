@@ -150,7 +150,7 @@ def render():
         for r in pc.itertuples():
             fg.add_trace(go.Scatter(x=[first, last], y=[r.a, r.b], mode="lines+markers", line=dict(color=cc(r), width=2), marker=dict(size=7), name=r.k, showlegend=False,
                                     hovertemplate=r.k + "<br>%{x}: %{y:.1f}%<extra></extra>"))
-        fg.update_layout(title=f"{first} to {last}: all % indicators", yaxis_title="% of records", xaxis_title="")
+        fg.update_layout(title=f"{first} to {last}: all % indicators", yaxis_title="% (weighted)", xaxis_title="")
         C.style(fg, 520, legend=False, bottom=40)
         C.show(fg, key="sc_slope")
     with g1[1]:   # 2 biggest movers
@@ -247,7 +247,7 @@ def render():
                 ft.add_trace(go.Bar(y=[r.k[:38]], x=[r.b], orientation="h", marker_color=col, showlegend=False, text=f"{r.b:.0f}% (was {r.a:.0f}%)", textposition="auto",
                                     hovertemplate=f"{r.k}<br>{first}: {r.a:.1f}%<br>{last}: {r.b:.1f}%<br>target {tgt}%<extra></extra>"))
                 ft.add_shape(type="line", x0=tgt, x1=tgt, y0=i - .42, y1=i + .42, line=dict(color="#0B1F3A", width=3))
-            ft.update_layout(title=f"Latest value ({last}) vs target (dark marker)", xaxis_title="% of records", yaxis_title="", barmode="overlay")
+            ft.update_layout(title=f"Latest value ({last}) vs target (dark marker)", xaxis_title="% (weighted)", yaxis_title="", barmode="overlay")
             ft.update_xaxes(range=[0, 100])
             ft.update_yaxes(autorange="reversed")
             C.style(ft, max(380, 110 + 55 * len(rows_)), legend=False, bottom=50)
