@@ -116,7 +116,7 @@ def render():
         dflt = "Stunting (height-for-age < -2 SD)" if "Stunting (height-for-age < -2 SD)" in pool else pool[0]
         ind = C.side().selectbox("Indicator", pool, index=pool.index(dflt), key="tr_ind", help=None)
     with c2:
-        split = C.side().selectbox("Split the trend by", list(DIMS), key="tr_split")
+        split = C.side().selectbox("Split the trend by", list(DIMS), index=1, key="tr_split")
     with c3:
         show_ci = C.side().toggle("95% confidence intervals", value=True, key="tr_ci", help="Vertical bars around each point. If the bars of two rounds overlap a lot, the change may be noise.")
     table, col, unit, pol, where, desc = C.IND[ind]
